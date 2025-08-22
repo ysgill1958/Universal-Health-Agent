@@ -11,6 +11,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: railwayapp/railway-action@v0.3.0
         with:
-          service: ${{ secrets.RAILWAY_SERVICE_ID }}
+          service: ${{ secrets.4ae1b831-9fca-43b3-a0e8-28687e0185fe }}
         env:
           RAILWAY_API_KEY: ${{ secrets.f8885120-5b01-4689-9ab3-ef142fd81334 }}
