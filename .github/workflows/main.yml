@@ -1,16 +1,29 @@
-name: Deploy to Railway
+name: Run Agent Loop
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:   # run manually
+  schedule:
+    - cron: "0 * * * *"   # every hour
 
 jobs:
-  deploy:
+  run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: railwayapp/railway-action@v0.3.0
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          service: ${{ secrets.4ae1b831-9fca-43b3-a0e8-28687e0185fe }}
-        env:
-          RAILWAY_API_KEY: ${{ secrets.f8885120-5b01-4689-9ab3-ef142fd81334 }}
+          python-version: "3.10"
+
+      - name: Run agent loop
+        run: python app.py
+
+      - name: Commit results
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "actions@github.com"
+          git add results.json
+          git commit -m "Update results [skip ci]" || echo "No changes to commit"
+          git push
