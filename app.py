@@ -15,7 +15,9 @@ os.makedirs("output/posts", exist_ok=True)
 open("output/.nojekyll", "w").close()
 
 today = datetime.now().strftime("%Y-%m-%d")
-posts_list = []
+
+# Group posts by date
+posts_by_date = {}
 
 def truncate(text, length=200):
     """Shorten text safely for preview."""
@@ -29,18 +31,21 @@ for category, url in FEEDS.items():
     if not feed.entries:
         continue
 
-    # Limit to first 2 articles
     for entry in feed.entries[:2]:
         title = entry.title
         link = entry.link
         summary = entry.get("summary", "")
         preview = truncate(summary, 200)
 
+        # Try to parse feed date, fallback to today
+        pub_date = getattr(entry, "published", today)
+        pub_day = pub_date.split("T")[0] if "T" in pub_date else pub_date.split(" ")[0]
+
         # Unique slug
-        slug = f"{today}-{category.lower()}-{title[:40].replace(' ', '-')}"
+        slug = f"{pub_day}-{category.lower()}-{title[:40].replace(' ', '-')}"
         filename = f"output/posts/{slug}.html"
 
-        # Post HTML
+        # Post page
         post_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,7 +54,7 @@ for category, url in FEEDS.items():
 </head>
 <body>
   <h1>{title}</h1>
-  <p><i>{category} • Published {today}</i></p>
+  <p><i>{category} • Published {pub_day}</i></p>
   <p>{summary}</p>
   <p>Read more: <a href="{link}" target="_blank">{link}</a></p>
   <br><a href="../index.html">← Back to Home</a>
@@ -59,9 +64,10 @@ for category, url in FEEDS.items():
         with open(filename, "w", encoding="utf-8") as f:
             f.write(post_html)
 
-        posts_list.append((title, slug, category, preview))
+        # Add to grouped list
+        posts_by_date.setdefault(pub_day, []).append((title, slug, category, preview))
 
-# Generate homepage
+# Build homepage grouped by date
 index_html = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -71,19 +77,19 @@ index_html = """<!DOCTYPE html>
 <body>
   <h1>Universal Health Agent Blog</h1>
   <h2>Latest Breakthroughs</h2>
-  <ul>
 """
-for title, slug, category, preview in posts_list:
-    index_html += f"""    <li>[{category}] <a href="posts/{slug}.html">{title}</a><br>
-        <small>{preview}</small></li>\n"""
 
-index_html += """  </ul>
-  <p><i>Auto-updated on {}</i></p>
-</body>
-</html>
-""".format(today)
+# Sort by most recent date
+for pub_day in sorted(posts_by_date.keys(), reverse=True):
+    index_html += f"<h3>{pub_day}</h3>\n<ul>\n"
+    for title, slug, category, preview in posts_by_date[pub_day]:
+        index_html += f"""  <li>[{category}] <a href="posts/{slug}.html">{title}</a><br>
+      <small>{preview}</small></li>\n"""
+    index_html += "</ul>\n"
+
+index_html += f"<p><i>Auto-updated on {today}</i></p>\n</body>\n</html>"
 
 with open("output/index.html", "w", encoding="utf-8") as f:
     f.write(index_html)
 
-print(f"✅ Generated {len(posts_list)} posts and updated homepage.")
+print(f"✅ Generated {sum(len(v) for v in posts_by_date.values())} posts across {len(posts_by_date)} dates.")
