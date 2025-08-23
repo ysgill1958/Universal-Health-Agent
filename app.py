@@ -10,7 +10,7 @@ open("output/.nojekyll", "w").close()
 # Today's date for post slug
 today = datetime.now().strftime("%Y-%m-%d")
 
-# Example daily post (replace with real Universal Health Agent content)
+# Example daily post
 new_post = {
     "title": f"Daily Health Update - {today}",
     "slug": f"{today}-daily-update",
@@ -35,7 +35,7 @@ post_html = f"""<!DOCTYPE html>
 with open(f"output/posts/{new_post['slug']}.html", "w", encoding="utf-8") as f:
     f.write(post_html)
 
-# Build index.html (latest first + preview)
+# Build index.html (latest first + short snippet)
 post_files = sorted(os.listdir("output/posts"), reverse=True)
 index_content = """<!DOCTYPE html>
 <html lang="en">
@@ -48,6 +48,7 @@ index_content = """<!DOCTYPE html>
     .post-preview { border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px; }
     .post-preview h2 { margin: 0; }
     .post-preview p { color: #555; }
+    a.readmore { font-size: 0.9em; color: darkblue; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -59,19 +60,23 @@ for file in post_files:
     with open(filepath, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # Extract title and snippet (first 150 characters of body text)
+    # Extract title
     title_start = html.find("<h1>") + 4
     title_end = html.find("</h1>")
     title = html[title_start:title_end]
 
+    # Extract snippet (first <p>, trimmed to 30 words)
     body_start = html.find("<p>") + 3
     body_end = html.find("</p>")
-    snippet = html[body_start:body_end][:150] + "..."
+    body_text = html[body_start:body_end].strip()
+    words = body_text.split()
+    snippet = " ".join(words[:30]) + ("..." if len(words) > 30 else "")
 
     index_content += f"""
   <div class="post-preview">
     <h2><a href="posts/{file}">{title}</a></h2>
     <p>{snippet}</p>
+    <a class="readmore" href="posts/{file}">Read more →</a>
   </div>
 """
 
