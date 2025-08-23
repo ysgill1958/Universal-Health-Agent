@@ -1,4 +1,1 @@
-fastapi
-uvicorn
-requests
-apscheduler
+# Empty for now (pure Python stdlib)
