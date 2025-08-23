@@ -1,13 +1,14 @@
 name: Run Agent Loop
 
 on:
-  workflow_dispatch:   # run manually
   schedule:
-    - cron: "0 * * * *"   # every hour
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:        # manual trigger
 
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -15,15 +16,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.11'
 
       - name: Run agent loop
         run: python app.py
 
-      - name: Commit results
+      - name: Commit and push changes
         run: |
           git config --local user.name "github-actions"
           git config --local user.email "actions@github.com"
-          git add results.json
-          git commit -m "Update results [skip ci]" || echo "No changes to commit"
+          git add .
+          git commit -m "Update site content [skip ci]" || echo "No changes"
           git push
