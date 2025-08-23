@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * *"   # runs daily at midnight UTC
 
 jobs:
   build:
@@ -30,4 +30,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output   # ← make sure app.py saves HTML here
+          publish_dir: ./output
