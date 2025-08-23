@@ -1,80 +1,48 @@
 import os
-import re
 from datetime import datetime
 
-OUTPUT_DIR = "output"
-POSTS_DIR = os.path.join(OUTPUT_DIR, "posts")
+# Make sure output directories exist
+os.makedirs("output/posts", exist_ok=True)
 
-# Dummy agent output (replace with your loop later)
-posts = [
-    {"title": "My First Post", "content": "Hello from the Universal Agent!"},
-    {"title": "Another Post", "content": "Second entry generated automatically."},
-]
+# Create a homepage (index.html)
+with open("output/index.html", "w") as f:
+    f.write("""
+    <html>
+    <head><title>Universal Health Agent</title></head>
+    <body>
+      <h1>Welcome to Universal Health Agent</h1>
+      <ul>
+        <li><a href="posts/2025-08-20-my-first-post.html">My First Post</a></li>
+        <li><a href="posts/2025-08-20-another-post.html">Another Post</a></li>
+      </ul>
+    </body>
+    </html>
+    """)
 
-def slugify(title: str) -> str:
-    """Make filename safe for URLs"""
-    return re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+# Example post 1
+with open("output/posts/2025-08-20-my-first-post.html", "w") as f:
+    f.write("""
+    <html>
+    <head><title>My First Post</title></head>
+    <body>
+      <h1>My First Post</h1>
+      <p>Hello, this is my first generated post!</p>
+      <a href="../index.html">Back to Home</a>
+    </body>
+    </html>
+    """)
 
-def save_post(title: str, content: str):
-    os.makedirs(POSTS_DIR, exist_ok=True)
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    filename = f"{date_str}-{slugify(title)}.html"
-    filepath = os.path.join(POSTS_DIR, filename)
+# Example post 2
+with open("output/posts/2025-08-20-another-post.html", "w") as f:
+    f.write("""
+    <html>
+    <head><title>Another Post</title></head>
+    <body>
+      <h1>Another Post</h1>
+      <p>This is another example blog entry.</p>
+      <a href="../index.html">Back to Home</a>
+    </body>
+    </html>
+    """)
 
-    html = f"""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>{title}</title>
-  <style>
-    body {{ font-family: Arial, sans-serif; margin: 40px; }}
-    h1 {{ color: #2c3e50; }}
-    a {{ color: #2980b9; text-decoration: none; }}
-    a:hover {{ text-decoration: underline; }}
-  </style>
-</head>
-<body>
-  <h1>{title}</h1>
-  <p>{content}</p>
-  <p><a href="../index.html">← Back to Home</a></p>
-</body>
-</html>
-"""
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(html)
-
-    return filename, title
-
-def generate_index(posts_meta):
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    links = "\n".join(
-        [f'<li><a href="posts/{fname}">{title}</a></li>' for fname, title in posts_meta]
-    )
-    html = f"""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Universal Health Agent Blog</title>
-  <style>
-    body {{ font-family: Arial, sans-serif; margin: 40px; }}
-    h1 {{ color: #16a085; }}
-    ul {{ line-height: 1.8; }}
-    li {{ margin-bottom: 8px; }}
-    a {{ color: #2980b9; }}
-  </style>
-</head>
-<body>
-  <h1>Universal Health Agent Blog</h1>
-  <ul>
-    {links}
-  </ul>
-</body>
-</html>
-"""
-    with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(html)
-
-if __name__ == "__main__":
-    posts_meta = [save_post(p["title"], p["content"]) for p in posts]
-    generate_index(posts_meta)
-    print(f"Generated {len(posts_meta)} posts and index.html")
+print("✅ Site generated in output/")
