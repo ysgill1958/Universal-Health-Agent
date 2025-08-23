@@ -1,51 +1,81 @@
-import os, json, datetime
+import os
+from datetime import datetime
 
-def run_agent_loop():
-    # Dummy evidence fetcher for demo
-    return {
-        "title": "New Breakthrough in Longevity",
-        "summary": "Study shows traditional therapy improves lifespan.",
-        "link": "https://example.com/study"
-    }
+# Output folders
+os.makedirs("posts", exist_ok=True)
+os.makedirs("static", exist_ok=True)
 
-def save_outputs(evidence):
-    # Save JSON log
-    with open("results.json", "a") as f:
-        f.write(json.dumps(evidence) + "\n")
+# Example evidence posts (in real loop, you'd generate/fetch these)
+posts = [
+    {"title": "Health Tip: Stay Hydrated", "content": "Drink at least 8 glasses of water a day."},
+    {"title": "AI in Healthcare", "content": "AI agents are helping doctors detect diseases earlier."},
+]
 
-    # Save Markdown post
-    os.makedirs("posts", exist_ok=True)
-    date_str = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    filename = f"posts/{date_str}.md"
-    with open(filename, "w") as f:
-        f.write(f"# {evidence['title']}\n\n")
-        f.write(f"**Summary:** {evidence['summary']}\n\n")
-        f.write(f"[Read more]({evidence['link']})\n")
+# Generate unique filenames for posts
+generated_files = []
+for i, post in enumerate(posts, 1):
+    slug = f"post-{datetime.now().strftime('%Y-%m-%d')}-{i}.html"
+    filepath = os.path.join("posts", slug)
+    generated_files.append((slug, post["title"]))
 
-def regenerate_index():
-    # Build homepage with list of posts
-    posts_dir = "posts"
-    post_files = sorted(os.listdir(posts_dir), reverse=True) if os.path.exists(posts_dir) else []
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{post["title"]}</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>{post["title"]}</h1>
+        <p><em>{datetime.now().strftime('%B %d, %Y')}</em></p>
+        <div class="content">{post["content"]}</div>
+        <p><a href="../index.html">← Back to homepage</a></p>
+    </div>
+</body>
+</html>""")
 
-    with open("index.md", "w") as f:
-        f.write("# Health Evidence Agent\n\n")
-        f.write("This site auto-publishes the latest findings about chronic disease therapies and longevity.\n\n")
-        f.write("## Latest Posts\n\n")
+# Generate homepage
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Health Agent Blog</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Universal Health Agent Blog</h1>
+        <p>Auto-generated updates from the agent loop.</p>
+        <ul>
+            {''.join([f'<li><a href="posts/{slug}">{title}</a></li>' for slug, title in generated_files])}
+        </ul>
+    </div>
+</body>
+</html>""")
 
-        if not post_files:
-            f.write("_No posts yet. Come back soon!_\n")
-        else:
-            for post in post_files:
-                title_line = ""
-                with open(os.path.join(posts_dir, post)) as pf:
-                    for line in pf:
-                        if line.startswith("# "):
-                            title_line = line.strip("# ").strip()
-                            break
-                date_label = post.replace(".md", "")
-                f.write(f"- [{title_line}](./posts/{post}) — {date_label}\n")
-
-if __name__ == "__main__":
-    evidence = run_agent_loop()
-    save_outputs(evidence)
-    regenerate_index()
+# Basic CSS (only write if file doesn't exist yet)
+if not os.path.exists("static/style.css"):
+    with open("static/style.css", "w") as f:
+        f.write("""
+body {
+    font-family: Arial, sans-serif;
+    background: #f9f9f9;
+    margin: 0;
+    padding: 0;
+}
+.container {
+    max-width: 700px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+}
+h1 { color: #2c3e50; }
+a { color: #0077cc; text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul { list-style-type: none; padding: 0; }
+li { margin: 10px 0; }
+""")
