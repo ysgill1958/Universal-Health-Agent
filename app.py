@@ -1,90 +1,89 @@
 import os
+import feedparser
 from datetime import datetime
 
-# Ensure output directories exist
-os.makedirs("output/posts", exist_ok=True)
-
-# Create .nojekyll file so GitHub Pages works correctly
-open("output/.nojekyll", "w").close()
-
-# Today's date for post slug
-today = datetime.now().strftime("%Y-%m-%d")
-
-# Example daily post
-new_post = {
-    "title": f"Daily Health Update - {today}",
-    "slug": f"{today}-daily-update",
-    "content": f"<p>This is the automatically generated blog post for {today}. "
-               "Future versions will include Universal Health Agent reports, news, and health tips.</p>"
+# Feeds to track
+FEEDS = {
+    "Health": "https://www.sciencedaily.com/rss/health_medicine.xml",
+    "Science": "https://www.sciencedaily.com/rss/top/health.xml",
+    "AI": "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml",
+    "Medicine": "https://www.sciencedaily.com/rss/health_medicine.xml"
 }
 
-# Save today's post
-post_html = f"""<!DOCTYPE html>
+# Setup folders
+os.makedirs("output/posts", exist_ok=True)
+open("output/.nojekyll", "w").close()
+
+today = datetime.now().strftime("%Y-%m-%d")
+posts_list = []
+
+def truncate(text, length=200):
+    """Shorten text safely for preview."""
+    if not text:
+        return "No summary available."
+    return text[:length].rsplit(" ", 1)[0] + "..." if len(text) > length else text
+
+# Loop feeds
+for category, url in FEEDS.items():
+    feed = feedparser.parse(url)
+    if not feed.entries:
+        continue
+
+    # Limit to first 2 articles
+    for entry in feed.entries[:2]:
+        title = entry.title
+        link = entry.link
+        summary = entry.get("summary", "")
+        preview = truncate(summary, 200)
+
+        # Unique slug
+        slug = f"{today}-{category.lower()}-{title[:40].replace(' ', '-')}"
+        filename = f"output/posts/{slug}.html"
+
+        # Post HTML
+        post_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{new_post['title']}</title>
+  <title>{title}</title>
 </head>
 <body>
-  <h1>{new_post['title']}</h1>
-  {new_post['content']}
+  <h1>{title}</h1>
+  <p><i>{category} • Published {today}</i></p>
+  <p>{summary}</p>
+  <p>Read more: <a href="{link}" target="_blank">{link}</a></p>
   <br><a href="../index.html">← Back to Home</a>
 </body>
 </html>
 """
-with open(f"output/posts/{new_post['slug']}.html", "w", encoding="utf-8") as f:
-    f.write(post_html)
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(post_html)
 
-# Build index.html (latest first + short snippet)
-post_files = sorted(os.listdir("output/posts"), reverse=True)
-index_content = """<!DOCTYPE html>
+        posts_list.append((title, slug, category, preview))
+
+# Generate homepage
+index_html = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Universal Health Agent Blog</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
-    h1 { color: darkgreen; }
-    .post-preview { border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px; }
-    .post-preview h2 { margin: 0; }
-    .post-preview p { color: #555; }
-    a.readmore { font-size: 0.9em; color: darkblue; text-decoration: none; }
-  </style>
 </head>
 <body>
   <h1>Universal Health Agent Blog</h1>
+  <h2>Latest Breakthroughs</h2>
+  <ul>
 """
+for title, slug, category, preview in posts_list:
+    index_html += f"""    <li>[{category}] <a href="posts/{slug}.html">{title}</a><br>
+        <small>{preview}</small></li>\n"""
 
-for file in post_files:
-    filepath = os.path.join("output/posts", file)
-    with open(filepath, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    # Extract title
-    title_start = html.find("<h1>") + 4
-    title_end = html.find("</h1>")
-    title = html[title_start:title_end]
-
-    # Extract snippet (first <p>, trimmed to 30 words)
-    body_start = html.find("<p>") + 3
-    body_end = html.find("</p>")
-    body_text = html[body_start:body_end].strip()
-    words = body_text.split()
-    snippet = " ".join(words[:30]) + ("..." if len(words) > 30 else "")
-
-    index_content += f"""
-  <div class="post-preview">
-    <h2><a href="posts/{file}">{title}</a></h2>
-    <p>{snippet}</p>
-    <a class="readmore" href="posts/{file}">Read more →</a>
-  </div>
-"""
-
-index_content += """</body>
+index_html += """  </ul>
+  <p><i>Auto-updated on {}</i></p>
+</body>
 </html>
-"""
+""".format(today)
 
 with open("output/index.html", "w", encoding="utf-8") as f:
-    f.write(index_content)
+    f.write(index_html)
 
-print(f"✅ Blog updated with new post: {new_post['title']}")
+print(f"✅ Generated {len(posts_list)} posts and updated homepage.")
