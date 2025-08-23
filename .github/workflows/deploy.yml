@@ -1,9 +1,11 @@
 name: Build and Deploy Site
 
-on:
+on:                       # <-- this is the section
   push:
     branches: [ "main" ]
-  workflow_dispatch:   # allow manual run
+  workflow_dispatch:      # allows manual run from GitHub UI
+  schedule:               # <-- you paste here
+    - cron: "0 0 * * *"   # every day at midnight UTC
 
 jobs:
   build:
