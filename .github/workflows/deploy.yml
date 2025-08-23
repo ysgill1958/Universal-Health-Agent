@@ -1,11 +1,11 @@
 name: Build and Deploy Site
 
-on:                       # <-- this is the section
+on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:      # allows manual run from GitHub UI
-  schedule:               # <-- you paste here
-    - cron: "0 0 * * *"   # every day at midnight UTC
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   build:
@@ -13,21 +13,21 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run app.py to generate site
+      - name: Run Agent Loop
         run: python app.py
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./output   # ← make sure app.py saves HTML here
