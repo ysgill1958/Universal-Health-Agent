@@ -1,60 +1,80 @@
 import os
+import re
 from datetime import datetime
 
 OUTPUT_DIR = "output"
+POSTS_DIR = os.path.join(OUTPUT_DIR, "posts")
 
-# Example posts - replace with your real agent loop
+# Dummy agent output (replace with your loop later)
 posts = [
-    {"title": "AI in Healthcare: A Quick Overview", "filename": "post1.html", "content": "<p>AI is changing healthcare...</p>"},
-    {"title": "Why Preventive Care Matters", "filename": "post2.html", "content": "<p>Prevention is better than cure...</p>"}
+    {"title": "My First Post", "content": "Hello from the Universal Agent!"},
+    {"title": "Another Post", "content": "Second entry generated automatically."},
 ]
 
-def save_post(title, filename, content):
-    """Save an individual post as an HTML file."""
-    with open(os.path.join(OUTPUT_DIR, filename), "w", encoding="utf-8") as f:
-        f.write(f"""<!DOCTYPE html>
-<html lang="en">
+def slugify(title: str) -> str:
+    """Make filename safe for URLs"""
+    return re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+
+def save_post(title: str, content: str):
+    os.makedirs(POSTS_DIR, exist_ok=True)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    filename = f"{date_str}-{slugify(title)}.html"
+    filepath = os.path.join(POSTS_DIR, filename)
+
+    html = f"""<!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+    h1 {{ color: #2c3e50; }}
+    a {{ color: #2980b9; text-decoration: none; }}
+    a:hover {{ text-decoration: underline; }}
+  </style>
 </head>
 <body>
   <h1>{title}</h1>
-  <div>{content}</div>
-  <p><a href="index.html">⬅ Back to Home</a></p>
+  <p>{content}</p>
+  <p><a href="../index.html">← Back to Home</a></p>
 </body>
-</html>""")
+</html>
+"""
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html)
 
-def build_index(posts):
-    """Generate index.html linking to all posts."""
-    links = "\n".join([f'<li><a href="{p["filename"]}">{p["title"]}</a></li>' for p in posts])
-    with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(f"""<!DOCTYPE html>
-<html lang="en">
+    return filename, title
+
+def generate_index(posts_meta):
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    links = "\n".join(
+        [f'<li><a href="posts/{fname}">{title}</a></li>' for fname, title in posts_meta]
+    )
+    html = f"""<!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Universal Health Agent</title>
+  <title>Universal Health Agent Blog</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+    h1 {{ color: #16a085; }}
+    ul {{ line-height: 1.8; }}
+    li {{ margin-bottom: 8px; }}
+    a {{ color: #2980b9; }}
+  </style>
 </head>
 <body>
-  <h1>Universal Health Agent</h1>
-  <p>Generated on {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")}</p>
+  <h1>Universal Health Agent Blog</h1>
   <ul>
     {links}
   </ul>
 </body>
-</html>""")
-
-def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    # Generate posts
-    for post in posts:
-        save_post(post["title"], post["filename"], post["content"])
-
-    # Generate homepage
-    build_index(posts)
+</html>
+"""
+    with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(html)
 
 if __name__ == "__main__":
-    main()
+    posts_meta = [save_post(p["title"], p["content"]) for p in posts]
+    generate_index(posts_meta)
+    print(f"Generated {len(posts_meta)} posts and index.html")
