@@ -1,29 +1,25 @@
 import os
 from datetime import datetime
 
-# Ensure posts folder exists
-os.makedirs("posts", exist_ok=True)
-
-# Example post content
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-post_filename = f"posts/post_{now.replace(':','-').replace(' ','_')}.html"
-
-with open(post_filename, "w") as f:
-    f.write(f"""
+def run_agent_loop():
+    # Dummy agent loop for now
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    post_html = f"""
     <html>
-    <head><title>Test Post</title></head>
-    <body>
-        <h1>Post generated at {now}</h1>
-        <p>This is a dummy generated post.</p>
-    </body>
+      <head>
+        <title>Universal Health Agent</title>
+      </head>
+      <body>
+        <h1>Universal Health Agent - Demo</h1>
+        <p>This page was generated automatically at {now} UTC.</p>
+        <p>Each run of GitHub Actions will update this page.</p>
+      </body>
     </html>
-    """)
+    """
+    return post_html
 
-# Generate homepage index
-posts = sorted(os.listdir("posts"))
-with open("index.html", "w") as f:
-    f.write("<html><head><title>Homepage</title></head><body>")
-    f.write("<h1>Posts</h1><ul>")
-    for post in posts:
-        f.write(f'<li><a href="posts/{post}">{post}</a></li>')
-    f.write("</ul></body></html>")
+if __name__ == "__main__":
+    os.makedirs("output", exist_ok=True)
+    with open("output/index.html", "w", encoding="utf-8") as f:
+        f.write(run_agent_loop())
+    print("✅ HTML generated in /output/index.html")
