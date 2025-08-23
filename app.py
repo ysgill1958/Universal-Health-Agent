@@ -19,7 +19,9 @@ def run_agent_loop():
     return post_html
 
 if __name__ == "__main__":
-    os.makedirs("output", exist_ok=True)
-    with open("output/index.html", "w", encoding="utf-8") as f:
-        f.write(run_agent_loop())
+   os.makedirs("output", exist_ok=True)
+with open("output/index.html", "w") as f:
+    f.write("<h1>Hello GitHub Pages!</h1>")
+
     print("✅ HTML generated in /output/index.html")
+
