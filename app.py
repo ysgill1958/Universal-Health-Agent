@@ -1,53 +1,44 @@
 from fastapi import FastAPI, BackgroundTasks
 import os, requests, random
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
 
 app = FastAPI()
 
 # --------------------------
-# Config (Railway secrets / .env)
+# Config
 # --------------------------
-WP_URL = os.getenv("WP_URL")  # e.g. https://yourwebsite.com/wp-json/wp/v2/posts
+WP_URL = os.getenv("WP_URL")
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
 
 NOTION_API_URL = "https://api.notion.com/v1/pages"
-NOTION_DB_ID = os.getenv("NOTION_DB_ID")  # Notion database ID
-NOTION_TOKEN = os.getenv("NOTION_TOKEN")  # Integration token
+NOTION_DB_ID = os.getenv("NOTION_DB_ID")
+NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 
-GENERIC_API_URL = os.getenv("GENERIC_API_URL")  # optional
+GENERIC_API_URL = os.getenv("GENERIC_API_URL")
 GENERIC_API_KEY = os.getenv("GENERIC_API_KEY")
 
-# Dummy dataset
 EVIDENCE_DATA = [
-    {
-        "title": "Yoga improves lung health",
-        "content": "Daily yoga improved respiratory health in a clinical trial.",
-        "image_url": "https://picsum.photos/600/400?yoga"
-    },
-    {
-        "title": "Turmeric reduces inflammation",
-        "content": "Turmeric was shown to lower inflammation markers significantly.",
-        "image_url": "https://picsum.photos/600/400?turmeric"
-    },
-    {
-        "title": "AI in early cancer detection",
-        "content": "AI tools now outperform traditional methods in detecting early-stage cancers.",
-        "image_url": "https://picsum.photos/600/400?cancer"
-    }
+    {"title": "Yoga improves lung health",
+     "content": "Daily yoga improved respiratory health in a clinical trial.",
+     "image_url": "https://picsum.photos/600/400?yoga"},
+    {"title": "Turmeric reduces inflammation",
+     "content": "Turmeric was shown to lower inflammation markers significantly.",
+     "image_url": "https://picsum.photos/600/400?turmeric"},
+    {"title": "AI in early cancer detection",
+     "content": "AI tools now outperform traditional methods in detecting early-stage cancers.",
+     "image_url": "https://picsum.photos/600/400?cancer"}
 ]
 
 # --------------------------
-# Target Posting Functions
+# Posting Functions
 # --------------------------
-
 def post_to_wordpress(evidence):
-    """Publish evidence to WordPress with image."""
     if not WP_URL or not WP_USER or not WP_APP_PASS:
         return {"skipped": "WordPress not configured"}
-    
-    # Upload image
     img_resp = requests.get(evidence["image_url"])
-    headers = {"Content-Disposition": f'attachment; filename="image.jpg"'}
+    headers = {"Content-Disposition": 'attachment; filename="image.jpg"'}
     media = requests.post(
         WP_URL.replace("posts", "media"),
         auth=(WP_USER, WP_APP_PASS),
@@ -55,8 +46,6 @@ def post_to_wordpress(evidence):
         files={"file": ("image.jpg", img_resp.content, "image/jpeg")},
     )
     media_id = media.json().get("id", None)
-
-    # Create post
     data = {
         "title": evidence["title"],
         "content": evidence["content"],
@@ -67,10 +56,8 @@ def post_to_wordpress(evidence):
     return r.json()
 
 def post_to_notion(evidence):
-    """Save evidence in Notion DB."""
     if not NOTION_DB_ID or not NOTION_TOKEN:
         return {"skipped": "Notion not configured"}
-    
     headers = {
         "Authorization": f"Bearer {NOTION_TOKEN}",
         "Content-Type": "application/json",
@@ -87,10 +74,8 @@ def post_to_notion(evidence):
     return r.json()
 
 def post_to_generic_api(evidence):
-    """Send evidence to any REST API."""
     if not GENERIC_API_URL:
         return {"skipped": "Generic API not configured"}
-    
     headers = {"Authorization": f"Bearer {GENERIC_API_KEY}"} if GENERIC_API_KEY else {}
     r = requests.post(GENERIC_API_URL, json=evidence, headers=headers)
     return r.json()
@@ -98,29 +83,25 @@ def post_to_generic_api(evidence):
 # --------------------------
 # Agent Loop
 # --------------------------
-
 def agent_loop():
     evidence = random.choice(EVIDENCE_DATA)
-
     results = {
         "wordpress": post_to_wordpress(evidence),
         "notion": post_to_notion(evidence),
         "generic_api": post_to_generic_api(evidence)
     }
-
+    print("✅ Agent loop executed:", results)
     return {"selected_evidence": evidence, "results": results}
 
 # --------------------------
 # FastAPI Endpoints
 # --------------------------
-
 @app.get("/")
 def root():
-    return {"status": "ok", "message": "Universal Health Agent running!"}
+    return {"status": "ok", "message": "Universal Health Agent running with scheduler!"}
 
 @app.get("/run-once")
 def run_once():
-    """Trigger loop and post everywhere configured."""
     return agent_loop()
 
 @app.post("/background-run")
@@ -131,3 +112,13 @@ def run_background(background_tasks: BackgroundTasks):
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+# --------------------------
+# Scheduler Setup (every 6 hours)
+# --------------------------
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=agent_loop, trigger="interval", hours=6)  # change hours/minutes as needed
+scheduler.start()
+
+# Shutdown scheduler on app exit
+atexit.register(lambda: scheduler.shutdown())
