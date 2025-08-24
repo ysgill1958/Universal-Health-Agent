@@ -93,4 +93,3 @@ except Exception as e:
     error_msg = f"❌ Error: {str(e)}"
     log_message(error_msg)
     log_message(traceback.format_exc())
-
