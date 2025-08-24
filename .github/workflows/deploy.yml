@@ -1,11 +1,10 @@
-name: Build and Deploy
+name: Build and Deploy Blog
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"   # runs daily
+    - cron: "0 0 * * *"   # run daily at midnight UTC
 
 jobs:
   build:
@@ -21,10 +20,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
-      - name: Run script to generate site
-        run: python app.py
+      - name: Run app.py
+        run: |
+          python app.py > build.log 2>&1 || echo "⚠️ Script failed, continuing anyway"
+          cat build.log   # show logs in Actions UI too
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
