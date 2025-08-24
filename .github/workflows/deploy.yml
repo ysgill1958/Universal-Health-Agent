@@ -4,7 +4,8 @@ on:
   push:
     branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"   # run daily at midnight UTC
+    - cron: "0 0 * * *"      # daily at 00:00 UTC
+  workflow_dispatch:         # allow manual run
 
 jobs:
   build:
@@ -12,24 +13,33 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
+      # Run your script, save all output to build.log, but don't fail the job if script errors.
       - name: Run app.py
         run: |
           python app.py > build.log 2>&1 || echo "⚠️ Script failed, continuing anyway"
-          cat build.log   # show logs in Actions UI too
+          cat build.log
 
+      # Upload build log as an artifact (optional but useful for debugging)
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build.log
+
+      # Deploy ONLY the contents of ./output to gh-pages root
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./output
+          force_orphan: true
