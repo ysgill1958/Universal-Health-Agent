@@ -3,7 +3,7 @@
     "source": "System",
     "title": "Hello from items.json",
     "link": "https://example.com",
-    "summary": "If you see this card, the data path is correct.",
+    "summary": "If you see this card, fetch is working and paths are correct.",
     "date": "2025-08-25",
     "image": null
   }
