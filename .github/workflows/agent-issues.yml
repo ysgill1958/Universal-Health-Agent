@@ -1,0 +1,38 @@
+name: Agent (Issue Query)
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+jobs:
+  run:
+    if: contains(github.event.issue.labels.*.name, 'ask-agent')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Extract query
+        id: q
+        run: |
+          echo "QUERY<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ github.event.issue.body }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - run: python app.py --query "${{ steps.q.outputs.QUERY }}"
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output
+          force_orphan: true
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `https://${context.repo.owner}.github.io/${context.repo.repo}/`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `✅ Report built. See ${url}`
+            });
