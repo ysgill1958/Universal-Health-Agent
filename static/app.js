@@ -22,17 +22,13 @@
   }
 
   function cardHTML(i){
-    const img = i.image ? `<img class="thumb" loading="lazy" src="${i.image}" alt="">` : '<div class="thumb"></div>';
+    const img = i.image ? `<img class="thumb" loading="lazy" src="${i.image}" alt="">` : '';
     return `<div class="card">
-      <div style="display:grid;grid-template-columns:1fr 180px;gap:12px">
-        <div>
-          <span class="badge">${i.source||''}</span>
-          <h3 style="margin:.4rem 0"><a target="_blank" href="${i.link}">${i.title}</a></h3>
-          <div style="color:#b7b5c8">${i.date||''}</div>
-          <p>${i.summary||''}</p>
-        </div>
-        <div>${img}</div>
-      </div>
+      <span class="badge">${i.source||''}</span>
+      <h3><a target="_blank" href="${i.link}">${i.title}</a></h3>
+      <div style="color:#b7b5c8">${i.date||''}</div>
+      <p>${i.summary||''}</p>
+      ${img}
     </div>`;
   }
 
@@ -42,7 +38,6 @@
     empty.style.display = list.length ? 'none' : '';
   }
 
-  // Simple search
   function filter(){
     const term = (q.value||'').toLowerCase();
     if (!term) return all;
