@@ -1,96 +1,94 @@
-import os
-import datetime
-import traceback
-import requests
-import feedparser
+import os, re, json, hashlib, argparse
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
+import requests, feedparser
+from bs4 import BeautifulSoup
 
-# Ensure output folder exists
-OUTPUT_DIR = "output"
-POSTS_DIR = os.path.join(OUTPUT_DIR, "posts")
-os.makedirs(POSTS_DIR, exist_ok=True)
+OUTPUT_DIR = Path("output")
+DATA_DIR = OUTPUT_DIR / "data"
+STATIC_DIR = OUTPUT_DIR / "static"
+for p in [OUTPUT_DIR, DATA_DIR, STATIC_DIR]:
+    p.mkdir(parents=True, exist_ok=True)
+(OUTPUT_DIR / ".nojekyll").write_text("")
 
-def log_message(message):
-    """Append logs into logs.html and print for GitHub Actions"""
-    print(message)
-    with open(os.path.join(OUTPUT_DIR, "logs.html"), "a", encoding="utf-8") as f:
-        f.write(f"<p>{datetime.datetime.now()} - {message}</p>\n")
+def now_utc():
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
-def fetch_breakthroughs():
-    """Fetch latest science/health breakthroughs from Google News RSS"""
-    feeds = [
-        "https://news.google.com/rss/search?q=medical+breakthrough&hl=en-IN&gl=IN&ceid=IN:en",
-        "https://news.google.com/rss/search?q=health+innovation&hl=en-IN&gl=IN&ceid=IN:en",
-        "https://news.google.com/rss/search?q=science+discovery&hl=en-IN&gl=IN&ceid=IN:en",
-    ]
+def log(msg):
+    ts = now_utc()
+    print(f"[{ts}] {msg}")
+    with open(DATA_DIR / "logs.txt", "a", encoding="utf-8") as fh:
+        fh.write(f"[{ts}] {msg}\n")
+
+def truncate_html(text, n=360):
+    if not text: return ""
+    t = re.sub("<.*?>", "", text)
+    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "..."
+
+HEADERS = {"User-Agent": "Mozilla/5.0 Universal-Health-Agent/1.0"}
+
+def get_og_image(url):
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=10); r.raise_for_status()
+        soup = BeautifulSoup(r.content, "lxml")
+        for css, attr in [
+            ('meta[property="og:image"]', "content"),
+            ('meta[name="twitter:image"]', "content"),
+        ]:
+            tag = soup.select_one(css)
+            if tag and tag.get(attr):
+                return tag.get(attr)
+    except Exception:
+        return None
+    return None
+
+BASE_FEEDS = [
+    ("NIH", "https://www.nih.gov/news-events/news-releases/rss.xml"),
+    ("WHO", "https://www.who.int/feeds/entity/mediacentre/news/en/rss.xml"),
+    ("Nature", "https://www.nature.com/nature.rss"),
+    ("BMJ", "https://www.bmj.com/latest.xml"),
+    ("Lancet", "https://www.thelancet.com/rssfeed/lancet_current.xml"),
+]
+
+def fetch_feed(source, url, limit=50):
     items = []
     try:
-        for url in feeds:
-            d = feedparser.parse(requests.get(url, timeout=10).content)
-            for entry in d.entries[:3]:  # take top 3 per feed
-                items.append(f"<li><a href='{entry.link}' target='_blank'>{entry.title}</a></li>")
-        return items
-    except Exception as e:
-        log_message(f"⚠️ Could not fetch RSS feeds: {e}")
-        return ["<li>No live breakthroughs available today.</li>"]
+        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        fp = feedparser.parse(resp.content)
+        for e in fp.entries[:limit]:
+            items.append({
+                "source": source,
+                "title": e.get("title", "").strip(),
+                "link": e.get("link", "").strip(),
+                "summary": truncate_html(e.get("summary", "") or e.get("description", "")),
+                "date": e.get("published", ""),
+                "image": None
+            })
+    except Exception as ex:
+        log(f"Error fetching {source}: {ex}")
+    return items
 
-try:
-    today = datetime.date.today().isoformat()
+def aggregate(query):
+    feeds = BASE_FEEDS[:]
+    if query:
+        feeds.insert(0, ("Google News", f"https://news.google.com/rss/search?q={requests.utils.quote(query)}"))
+    items = []
+    for src, url in feeds:
+        items.extend(fetch_feed(src, url))
+    for it in items[:100]:
+        it["image"] = get_og_image(it["link"])
+    return items
 
-    # Generate breakthroughs list
-    breakthroughs = fetch_breakthroughs()
+def build(query):
+    items = aggregate(query)
+    (DATA_DIR / "items.json").write_text(json.dumps(items, indent=2))
+    (DATA_DIR / "logs.txt").write_text(f"Generated {len(items)} items at {now_utc()}\\n")
+    print(f"✅ {len(items)} items built")
 
-    # Generate a daily blog post
-    post_filename = f"{today}-daily-update.html"
-    post_path = os.path.join(POSTS_DIR, post_filename)
-
-    post_content = f"""
-    <html>
-    <head><title>Daily Health Update - {today}</title></head>
-    <body>
-    <h1>Daily Health Update - {today}</h1>
-    <p>This is the automatically generated blog post for {today}.</p>
-
-    <h2>Latest Health & Science Breakthroughs</h2>
-    <ul>
-    {''.join(breakthroughs)}
-    </ul>
-
-    <p>Future versions will include Universal Health Agent reports, news, and health tips.</p>
-    </body>
-    </html>
-    """
-
-    with open(post_path, "w", encoding="utf-8") as f:
-        f.write(post_content.strip())
-
-    log_message(f"✅ Generated blog post: {post_filename}")
-
-    # Generate/Update index.html
-    posts_list = []
-    for fname in sorted(os.listdir(POSTS_DIR), reverse=True):
-        if fname.endswith(".html"):
-            posts_list.append(f'<li><a href="posts/{fname}">{fname}</a></li>')
-
-    index_content = f"""
-    <html>
-    <head><title>Universal Health Agent Blog</title></head>
-    <body>
-    <h1>Universal Health Agent Blog</h1>
-    <ul>
-    {''.join(posts_list)}
-    </ul>
-    <p><a href="logs.html">View build logs</a></p>
-    </body>
-    </html>
-    """
-
-    with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(index_content.strip())
-
-    log_message("✅ index.html updated successfully")
-
-except Exception as e:
-    error_msg = f"❌ Error: {str(e)}"
-    log_message(error_msg)
-    log_message(traceback.format_exc())
-
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--query", default="longevity therapy OR chronic disease treatment")
+    args = ap.parse_args()
+    build(args.query)

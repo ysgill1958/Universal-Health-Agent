@@ -1,4 +1,4 @@
 requests
 feedparser
-beautifulsoup4   # in case you later scrape HTML pages
-lxml             # fast XML/HTML parsing
+beautifulsoup4
+lxml
