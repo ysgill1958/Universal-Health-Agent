@@ -1,16 +1,58 @@
-
----
-
-## 4. `output/index.html`
-```html
 <!doctype html>
-<html>
-<head><meta charset="UTF-8"><title>Universal Health Agent</title></head>
-<body style="font-family:sans-serif;background:#0c0a1b;color:#f6f5ff">
-<h1>Universal Health Agent</h1>
-<p>Latest scraped evidence. Search/filter supported.</p>
-<div id="grid"></div>
-<div id="empty" style="display:none">No results</div>
-<script src="./static/app.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Universal Health Agent</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0c0a1b;color:#f6f5ff;margin:0}
+    .header{padding:28px 20px;background:linear-gradient(90deg,rgba(124,77,255,.2),rgba(0,224,184,.2));border-bottom:1px solid #201b39}
+    .container{max-width:1080px;margin:0 auto;padding:18px}
+    .card{background:#17132b;border:1px solid #241f40;border-radius:14px;overflow:hidden;margin:14px 0;padding:12px}
+    .badge{display:inline-block;background:#2a2548;color:#cfcaf2;padding:4px 10px;border-radius:999px;font-size:.8em;margin-right:8px}
+    .grid{display:grid;gap:14px}
+    @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+    .thumb{width:100%;height:100%;object-fit:cover;background:#0d0a20}
+    input[type=search]{width:100%;padding:12px;border-radius:10px;border:1px solid #2a2548;background:#120f25;color:#f6f5ff}
+    .chip{display:inline-flex;align-items:center;gap:6px;background:#2a2548;color:#dcd7ff;padding:6px 10px;border-radius:999px;font-size:.82em;border:1px solid #2d2950;cursor:pointer;margin-right:8px;margin-bottom:8px}
+    .count{font-size:.9em;color:#b7b5c8}
+    .empty{background:transparent;border:1px dashed #3a355d;border-radius:14px;padding:16px;color:#bdb6ff;margin-top:12px}
+  </style>
+</head>
+<body>
+  <div class="header"><div class="container">
+    <h1 style="margin:0 0 6px 0">Universal Health Agent</h1>
+    <div style="color:#b7b5c8">Latest scraped evidence. Search/filter supported.</div>
+  </div></div>
+
+  <div class="container">
+    <div class="card">
+      <input id="q" type="search" placeholder="Search title or summary… (e.g., metformin, RCT, ayurveda)" />
+      <div id="sourceChips" style="margin-top:8px"></div>
+      <div id="tagChips"></div>
+      <div><span id="count" class="count"></span></div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" style="display:none">No items found or failed to load <code>data/items.json</code>.</div>
+  </div>
+
+  <noscript style="color:#fff;display:block;text-align:center;margin:20px">
+    Enable JavaScript to view results.
+  </noscript>
+
+  <!-- IMPORTANT: paths are relative to index.html location -->
+  <script>
+    // One-line fetch test to surface errors in-page if items.json is missing
+    fetch('./data/items.json?cb=' + Date.now())
+      .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(_ => { /* ok, hand off to app.js */ })
+      .catch(err => {
+        document.getElementById('empty').style.display = '';
+        document.getElementById('empty').innerHTML +=
+          '<div style="margin-top:8px;color:#ffb4b4">Error: '+(err.message||err)+'</div>';
+      });
+  </script>
+  <script src="./static/app.js?v=1"></script>
 </body>
 </html>
