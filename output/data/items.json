@@ -1,9 +1,9 @@
 [
   {
     "source": "System",
-    "title": "Placeholder — run app.py for live data",
-    "link": "https://github.com",
-    "summary": "Replaced by Action run",
+    "title": "Hello from items.json",
+    "link": "https://example.com",
+    "summary": "If you see this card, fetch is working and paths are correct.",
     "date": "2025-08-25",
     "image": null
   }
