@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+<head><meta charset="UTF-8"><title>Logs</title></head>
+<body style="font-family:sans-serif;background:#0c0a1b;color:#f6f5ff">
+<h1>Logs</h1>
+<pre id="logs"></pre>
+<script>fetch('./data/logs.txt').then(r=>r.text()).then(t=>{document.getElementById('logs').textContent=t})</script>
+<a href="index.html">← Back</a>
+</body>
+</html>
