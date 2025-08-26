@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Directory • Universal Health Agent</title>
+  <link rel="stylesheet" href="index.html" disabled> <!-- reuse styles from index via inline below -->
+  <style>
+    :root{--bg:#f8f9fa; --text:#212529; --muted:#6c757d; --card:#ffffff; --border:#dee2e6; --chip:#e9ecef; --chipText:#495057; --link:#0d6efd; --hdr1:#7c4dff; --hdr2:#00e0b8; --hdr3:#ff7ab6; --hdr4:#ffd166;}
+    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    a{color:#0d6efd} a:hover{text-decoration:underline}
+    .hero{position:relative;color:#fff;background:radial-gradient(1200px 300px at -5% -40%, rgba(124,77,255,.35), transparent 60%),radial-gradient(900px 260px at 110% -30%, rgba(0,224,184,.35), transparent 60%),linear-gradient(135deg, var(--hdr1) 0%, var(--hdr2) 45%, var(--hdr3) 85%)}
+    .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg, rgba(255,255,255,.25), rgba(255,255,255,0) 40%, rgba(255,255,255,.25) 80%) no-repeat;background-size:200% 200%;animation:shimmer 10s linear infinite;pointer-events:none;mix-blend-mode:soft-light}
+    @keyframes shimmer{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
+    .hero .container{max-width:1140px;margin:0 auto;padding:28px 16px}
+    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.logo{width:42px;height:42px;border-radius:12px;background:conic-gradient(from 180deg at 50% 50%,var(--hdr1),var(--hdr2),var(--hdr3),var(--hdr4),var(--hdr1));box-shadow:0 8px 24px rgba(0,0,0,.25), inset 0 0 0 2px rgba(255,255,255,.25)}
+    .title{margin:0;font-size:28px;letter-spacing:.3px}.subtitle{margin:4px 0 0 0;color:#f1f3f5;font-size:14px}
+    .navchips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.navchips a{display:inline-block;padding:8px 12px;border-radius:999px;font-size:13px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);text-decoration:none;backdrop-filter: blur(4px)}.navchips a:hover{background:rgba(255,255,255,.26)}
+    .container{max-width:1140px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:12px 0}
+    .txt{padding:14px}
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.78em;margin:0 6px 6px 0;border:1px solid var(--border);background:#e9ecef;color:#495057}
+    footer{margin-top:28px;background:#fff;border-top:1px solid var(--border);color:var(--muted)}
+    footer .wrap{max-width:1140px;margin:0 auto;padding:18px 16px;display:grid;gap:8px}.footnav{display:flex;gap:14px;flex-wrap:wrap}.footnav a{color:#495057;text-decoration:none;font-size:14px}.footnav a:hover{text-decoration:underline}.small{font-size:12px}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1 class="title">Directory</h1>
+          <p class="subtitle">Programs, Experts, and Institutions</p>
+        </div>
+      </div>
+      <nav class="navchips"><a href="index.html">Home</a><a href="directory.html">Directory</a><a href="plan.html">My Plan</a><a href="logs.html">Logs</a></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <input id="dirSearch" type="search" placeholder="Search name, specialty, focus, location…" style="width:100%;padding:12px;border-radius:10px;border:1px solid #dee2e6;background:#fff;color:#212529">
+    <div id="dir"></div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <nav class="footnav"><a href="index.html">Home</a><a href="directory.html">Directory</a><a href="plan.html">My Plan</a><a href="logs.html">Logs</a></nav>
+      <div class="small">© 2025 Universal Health Agent • Built with GitHub Pages</div>
+    </div>
+  </footer>
+
+  <script src="./static/dir.js"></script>
+</body>
+</html>
