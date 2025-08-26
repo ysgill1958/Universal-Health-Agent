@@ -1,8 +1,8 @@
 # Universal Health Agent
 
-Scrapes medical + longevity news and outputs a static site.
+A GitHub Pages site that aggregates **health & longevity evidence** (news, journals, preprints) and publishes a searchable UI with Topic / Discipline / Area filters. Also builds a **catalog** of Programs, Experts, and Institutions from permitted sources.
 
-### Local Run
+## Local Run
 ```bash
 pip install -r requirements.txt
-python app.py --query "longevity therapy OR chronic disease treatment"
+python app.py --query "longevity OR aging OR chronic disease treatment" --build-catalog

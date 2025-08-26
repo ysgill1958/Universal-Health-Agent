@@ -1,6 +1,7 @@
-# app.py — Universal Health Agent (Aggressive Scraper)
-# Usage (local):  pip install -r requirements.txt && python app.py --query "longevity OR chronic disease"
-# The script writes output/data/items.json + logs.txt and your static site uses them.
+# app.py — Universal Health Agent (Aggressive + Catalog)
+# Local run:
+#   pip install -r requirements.txt
+#   python app.py --query "longevity OR aging OR chronic disease treatment" --build-catalog
 
 import os, re, json, time, hashlib, argparse
 from datetime import datetime
@@ -36,8 +37,7 @@ def log(msg: str):
 def clean_text(s: str) -> str:
     if not s:
         return ""
-    # strip HTML
-    s = re.sub(r"<.*?>", " ", s)
+    s = re.sub(r"<.*?>", " ", s)           # strip HTML tags
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -81,42 +81,32 @@ def get_og_image(url: str, timeout=8) -> str | None:
         log(f"OG image fetch failed: {ex}")
     return None
 
-# ---------------------------- Feeds ----------------------------
+# ---------------------------- Evidence feeds ----------------------------
 def google_news_feed(query: str, lang="en-IN") -> str:
     return f"https://news.google.com/rss/search?q={requests.utils.quote(query)}&hl={lang}&gl=IN&ceid=IN:{lang.split('-')[0]}"
 
 def pubmed_feed(query: str) -> str:
     return f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={requests.utils.quote(query)}&sort=date"
 
-# Core reputable health/science feeds (RSS/Atom).
-# NOTE: If any URL 404s, we log and keep going; the script is resilient.
 BASE_FEEDS = [
-    # Agencies & orgs
     ("NIH", "https://www.nih.gov/news-events/news-releases/rss.xml"),
     ("WHO", "https://www.who.int/feeds/entity/mediacentre/news/en/rss.xml"),
     ("CDC", "https://tools.cdc.gov/api/v2/resources/media/403372.rss"),
     ("Cochrane News", "https://www.cochrane.org/news-feed.xml"),
-
-    # Journals / publishers
     ("Nature", "https://www.nature.com/nature.rss"),
     ("BMJ", "https://www.bmj.com/latest.xml"),
     ("Lancet", "https://www.thelancet.com/rssfeed/lancet_current.xml"),
     ("PLOS Medicine", "https://journals.plos.org/plosmedicine/feed/atom"),
     ("ScienceDaily Health", "https://www.sciencedaily.com/rss/health_medicine.xml"),
     ("ScienceDaily Top", "https://www.sciencedaily.com/rss/top.xml"),
-
-    # Preprints (fast-moving)
     ("bioRxiv Latest", "https://www.biorxiv.org/rss/latest.xml"),
     ("medRxiv Latest", "https://www.medrxiv.org/rss/latest.xml"),
 ]
 
-# ---------------------------- Fetching ----------------------------
 def parse_date(entry):
-    # Use published / updated string if present (feedparser already did the parsing best-effort)
     return entry.get("published", "") or entry.get("updated", "") or entry.get("dc_date", "") or ""
 
 def fetch_feed(source: str, url: str, limit: int, delay: float):
-    """Return list of items from a single feed."""
     items = []
     try:
         resp = requests.get(url, headers=HEADERS, timeout=25)
@@ -140,15 +130,11 @@ def fetch_feed(source: str, url: str, limit: int, delay: float):
             time.sleep(delay)
     return items
 
-# ---------------------------- Aggregate ----------------------------
 def aggregate(query: str,
               per_feed_limit=80,
               max_total=700,
               thumb_budget=220,
               delay_between=0.4):
-    """
-    Aggregate across feeds. With default settings, aims for ~500–700 unique items.
-    """
     feeds = BASE_FEEDS[:]
     if query:
         feeds = [("Google News", google_news_feed(query)),
@@ -158,7 +144,6 @@ def aggregate(query: str,
     for src, url in feeds:
         all_items.extend(fetch_feed(src, url, per_feed_limit, delay_between))
 
-    # Deduplicate by normalized (host|title)
     seen = set()
     deduped = []
     for it in all_items:
@@ -174,7 +159,6 @@ def aggregate(query: str,
 
     log(f"After dedupe: {len(deduped)} items")
 
-    # Add thumbnails (respect budget)
     for it in deduped:
         if thumb_budget <= 0:
             break
@@ -183,17 +167,14 @@ def aggregate(query: str,
             it["image"] = img
             thumb_budget -= 1
 
-    # Sort by date string (best-effort)
     deduped.sort(key=lambda x: x.get("date") or "", reverse=True)
     return deduped
 
-# ---------------------------- Build ----------------------------
 def build(query: str):
     items = aggregate(query)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     (DATA_DIR / "items.json").write_text(json.dumps(items, indent=2), encoding="utf-8")
 
-    # Ensure other data files exist (site expects them)
     if not (DATA_DIR / "catalog.json").exists():
         (DATA_DIR / "catalog.json").write_text(json.dumps({"programs": [], "experts": [], "institutions": []}, indent=2), encoding="utf-8")
     if not (DATA_DIR / "longevity_plan.json").exists():
@@ -203,9 +184,161 @@ def build(query: str):
     (DATA_DIR / "logs.txt").write_text(f"Generated: {stamp}\nQuery: {query or '—'}\nItems: {len(items)}\n", encoding="utf-8")
     log(f"✅ Built {len(items)} items → output/data/items.json")
 
+# ---------------------------- Catalog scraping ----------------------------
+from collections import defaultdict
+
+SITE_MAP = {
+    # ↓ Replace these with real, permitted listing pages you trust
+    # Example placeholders to show structure:
+    "example_clinics": {
+        "type": "institution",
+        "url": "https://example.com/longevity-clinics",
+        "item": ".clinic",
+        "fields": {
+            "name": ".title",
+            "focus": ".desc",
+            "location": ".location",
+            "url": "a[href]",
+            "image": "img[src]"
+        }
+    },
+    "example_experts": {
+        "type": "expert",
+        "url": "https://example.com/experts",
+        "item": ".expert-card",
+        "fields": {
+            "name": ".expert-name",
+            "specialty": ".expert-specialty",
+            "location": ".expert-location",
+            "url": "a[href]",
+            "image": "img[src]"
+        }
+    },
+    "example_programs": {
+        "type": "program",
+        "url": "https://example.com/programs",
+        "item": ".program-item",
+        "fields": {
+            "name": ".program-title",
+            "category": ".program-category",
+            "description": ".program-description",
+            "location": ".program-location",
+            "url": "a[href]",
+            "image": "img[src]"
+        }
+    }
+}
+
+def text_or_none(node):
+    return node.get_text(strip=True) if node else None
+
+def abs_url(base, maybe):
+    try:
+        return urljoin(base, maybe) if maybe else None
+    except Exception:
+        return maybe
+
+def scrape_generic_list(source_key, cfg):
+    out = []
+    try:
+        r = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.content, "lxml")
+        for card in soup.select(cfg["item"]):
+            rec = {}
+            for field, sel in cfg["fields"].items():
+                if sel.endswith("[href]"):
+                    tag = card.select_one(sel.split("[")[0])
+                    rec[field] = abs_url(cfg["url"], tag.get("href") if tag else None)
+                elif sel.endswith("[src]"):
+                    tag = card.select_one(sel.split("[")[0])
+                    rec[field] = abs_url(cfg["url"], tag.get("src") if tag else None)
+                else:
+                    rec[field] = text_or_none(card.select_one(sel))
+            if not rec.get("image") and rec.get("url"):
+                rec["image"] = get_og_image(rec["url"])
+            rec = {k: v for k, v in rec.items() if v}
+            rec["__type"] = cfg["type"]
+            out.append(rec)
+        log(f"[catalog] {source_key}: scraped {len(out)} items")
+    except Exception as ex:
+        log(f"[catalog] {source_key} error: {ex}")
+    return out
+
+def dedupe_by_key(items, key_fn):
+    seen, out = set(), []
+    for x in items:
+        k = key_fn(x)
+        if not k or k in seen:
+            continue
+        seen.add(k); out.append(x)
+    return out
+
+def classify_record(rec):
+    t = rec.pop("__type", "").lower()
+    if t == "program":
+        return "programs", {
+            "name": rec.get("name"),
+            "category": rec.get("category") or "—",
+            "description": rec.get("description") or rec.get("focus") or "—",
+            "location": rec.get("location") or "—",
+            "url": rec.get("url"),
+            "image": rec.get("image"),
+            "tags": []
+        }
+    if t == "expert":
+        rating = None
+        try:
+            rating = float(rec.get("rating", "").strip())
+        except Exception:
+            pass
+        return "experts", {
+            "name": rec.get("name"),
+            "specialty": rec.get("specialty") or "—",
+            "location": rec.get("location") or "—",
+            "rating": rating,
+            "url": rec.get("url"),
+            "image": rec.get("image"),
+            "tags": []
+        }
+    return "institutions", {
+        "name": rec.get("name"),
+        "focus": rec.get("focus") or rec.get("description") or "—",
+        "location": rec.get("location") or "—",
+        "url": rec.get("url"),
+        "image": rec.get("image"),
+        "tags": []
+    }
+
+def build_catalog():
+    all_raw = []
+    for key, cfg in SITE_MAP.items():
+        all_raw.extend(scrape_generic_list(key, cfg))
+
+    def kfn(x):
+        nm = (x.get("name") or "").strip().lower()
+        domain = urlparse(x.get("url") or "").netloc.lower()
+        return f"{nm}|{domain}" if nm else None
+
+    all_raw = dedupe_by_key(all_raw, kfn)
+
+    bucketed = {"programs": [], "experts": [], "institutions": []}
+    for rec in all_raw:
+        kind, norm = classify_record(rec)
+        if norm.get("name") and norm.get("url"):
+            bucketed[kind].append(norm)
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    (DATA_DIR / "catalog.json").write_text(json.dumps(bucketed, indent=2), encoding="utf-8")
+    log(f"[catalog] Wrote {len(bucketed['programs'])} programs, {len(bucketed['experts'])} experts, {len(bucketed['institutions'])} institutions")
+
 # ---------------------------- CLI ----------------------------
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--query", type=str, default="longevity OR aging OR chronic disease treatment OR randomized trial")
+    ap.add_argument("--build-catalog", action="store_true", help="Scrape and write output/data/catalog.json")
     args = ap.parse_args()
+
     build(args.query)
+    if args.build_catalog:
+        build_catalog()
