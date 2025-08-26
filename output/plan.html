@@ -1,10 +1,27 @@
 <!doctype html>
-<html>
-<head><meta charset="UTF-8"><title>Plan</title></head>
-<body style="font-family:sans-serif;background:#0c0a1b;color:#f6f5ff">
-<h1>My Longevity Plan</h1>
-<div id="plan"></div>
-<a href="index.html">← Back</a>
-<script src="./static/plan.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Plan • Universal Health Agent</title>
+  <style>
+    :root{--bg:#f8f9fa; --text:#212529; --muted:#6c757d; --card:#ffffff; --border:#dee2e6; --hdr1:#7c4dff; --hdr2:#00e0b8; --hdr3:#ff7ab6; --hdr4:#ffd166;}
+    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .hero{position:relative;color:#fff;background:linear-gradient(135deg, var(--hdr1) 0%, var(--hdr2) 45%, var(--hdr3) 85%)}
+    .hero .container{max-width:1140px;margin:0 auto;padding:28px 16px}
+    .container{max-width:1140px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+    footer{margin-top:28px;background:#fff;border-top:1px solid var(--border);color:var(--muted)}
+    footer .wrap{max-width:1140px;margin:0 auto;padding:18px 16px}
+  </style>
+</head>
+<body>
+  <header class="hero"><div class="container"><h1>My Longevity Plan</h1></div></header>
+  <main class="container">
+    <div class="card"><pre id="plan" style="white-space:pre-wrap"></pre></div>
+    <p>Populate <code>output/data/longevity_plan.json</code> to see items here.</p>
+  </main>
+  <footer><div class="wrap">© 2025 Universal Health Agent</div></footer>
+  <script src="./static/plan.js"></script>
 </body>
 </html>
