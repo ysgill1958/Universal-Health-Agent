@@ -1,10 +1,11 @@
-# app.py — Universal Health Agent (Aggressive + Catalog)
+# app.py — Universal Health Agent (Aggressive + Catalog, newest-first ordering)
 # Local run:
 #   pip install -r requirements.txt
 #   python app.py --query "longevity OR aging OR chronic disease treatment" --build-catalog
 
-import os, re, json, time, hashlib, argparse
-from datetime import datetime
+import os, re, json, time, hashlib, argparse, email.utils as eut
+from time import mktime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
@@ -103,8 +104,27 @@ BASE_FEEDS = [
     ("medRxiv Latest", "https://www.medrxiv.org/rss/latest.xml"),
 ]
 
+# Newest-first date parsing
 def parse_date(entry):
-    return entry.get("published", "") or entry.get("updated", "") or entry.get("dc_date", "") or ""
+    # Prefer structured time if present
+    for key in ("published_parsed", "updated_parsed"):
+        if entry.get(key):
+            try:
+                return datetime.utcfromtimestamp(mktime(entry[key])).strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                pass
+    # Try common string fields
+    for key in ("published", "updated", "dc_date"):
+        if entry.get(key):
+            try:
+                tt = eut.parsedate_to_datetime(entry[key])
+                if tt.tzinfo:
+                    tt = tt.astimezone(timezone.utc).replace(tzinfo=None)
+                return tt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+    # Fallback: empty (will sort to bottom)
+    return ""
 
 def fetch_feed(source: str, url: str, limit: int, delay: float):
     items = []
@@ -159,6 +179,7 @@ def aggregate(query: str,
 
     log(f"After dedupe: {len(deduped)} items")
 
+    # Add thumbnails (respect budget)
     for it in deduped:
         if thumb_budget <= 0:
             break
@@ -167,6 +188,7 @@ def aggregate(query: str,
             it["image"] = img
             thumb_budget -= 1
 
+    # Newest-first
     deduped.sort(key=lambda x: x.get("date") or "", reverse=True)
     return deduped
 
@@ -184,149 +206,191 @@ def build(query: str):
     (DATA_DIR / "logs.txt").write_text(f"Generated: {stamp}\nQuery: {query or '—'}\nItems: {len(items)}\n", encoding="utf-8")
     log(f"✅ Built {len(items)} items → output/data/items.json")
 
-# ---------------------------- Catalog scraping ----------------------------
-from collections import defaultdict
+# ---------------------------- Catalog scraping (Programs / Experts / Institutions) ----------------------------
+def domain_of(u):
+    try:
+        return urlparse(u).netloc.lower()
+    except Exception:
+        return ""
 
+def is_external_link(page_url, href):
+    if not href: return False
+    d0 = domain_of(page_url)
+    d1 = domain_of(href)
+    return d1 and d1 != d0
+
+def guess_name_from_anchor(a_tag, href):
+    # Prefer anchor text; fallback to domain
+    txt = (a_tag.get_text(" ", strip=True) if a_tag else "")[:120]
+    if txt and not txt.lower().startswith(("http://","https://")):
+        return txt
+    dom = domain_of(href)
+    if dom.startswith("www."): dom = dom[4:]
+    return dom or href
+
+def make_record(kind, name, href, image=None, **extra):
+    rec = {"name": name, "url": href, "image": image, "__type": kind}
+    rec.update(extra)
+    return rec
+
+# Seeds for your 5 sources
 SITE_MAP = {
-    # ↓ Replace these with real, permitted listing pages you trust
-    # Example placeholders to show structure:
-    "example_clinics": {
+    # 1) Scispot list → external company links
+    "scispot_top20_longevity_biotechs": {
+        "mode": "outlinks",
         "type": "institution",
-        "url": "https://example.com/longevity-clinics",
-        "item": ".clinic",
-        "fields": {
-            "name": ".title",
-            "focus": ".desc",
-            "location": ".location",
-            "url": "a[href]",
-            "image": "img[src]"
-        }
+        "url": "https://www.scispot.com/blog/top-20-of-most-innovative-anti-aging-companies-in-the-world",
+        "container": "article, main, .blog-content, .prose",
+        "tags": ["longevity", "biotech", "companies"]
     },
-    "example_experts": {
-        "type": "expert",
-        "url": "https://example.com/experts",
-        "item": ".expert-card",
-        "fields": {
-            "name": ".expert-name",
-            "specialty": ".expert-specialty",
-            "location": ".expert-location",
-            "url": "a[href]",
-            "image": "img[src]"
-        }
+    # 2) Labiotech list → external company links
+    "labiotech_top_biotech_companies": {
+        "mode": "outlinks",
+        "type": "institution",
+        "url": "https://www.labiotech.eu/best-biotech/anti-aging-biotech-companies/",
+        "container": "article, main, .single-content, .article__content",
+        "tags": ["longevity", "biotech", "companies"]
     },
-    "example_programs": {
+    # 3) Longevity-Clinic list → external clinic links
+    "longevity_clinic_top18": {
+        "mode": "outlinks",
+        "type": "institution",
+        "url": "https://longevity-clinic.co.uk/what-is-the-best-longevity-clinic-in-the-world/",
+        "container": "article, main, .entry-content, .content",
+        "tags": ["longevity", "clinic", "ranking"]
+    },
+    # 4) Lifespan.io Rejuvenation Roadmap → outbound programs/resources
+    "lifespan_rejuvenation_roadmap": {
+        "mode": "outlinks",
         "type": "program",
-        "url": "https://example.com/programs",
-        "item": ".program-item",
-        "fields": {
-            "name": ".program-title",
-            "category": ".program-category",
-            "description": ".program-description",
-            "location": ".program-location",
-            "url": "a[href]",
-            "image": "img[src]"
-        }
-    }
+        "url": "https://www.lifespan.io/road-maps/the-rejuvenation-roadmap/",
+        "container": "article, main, #content, .entry-content, .wrap",
+        "tags": ["rejuvenation", "roadmap", "programs"]
+    },
+    # 5) DrKalidas clinic homepage → single institution
+    "dr_kalidas_center": {
+        "mode": "single",
+        "type": "institution",
+        "url": "https://drkalidas.com/",
+        "name": "The Center for Natural & Integrative Medicine (Dr. Kalidas)",
+        "location": "Orlando, Florida, USA",
+        "tags": ["integrative", "naturopathic", "clinic"]
+    },
 }
 
-def text_or_none(node):
-    return node.get_text(strip=True) if node else None
-
-def abs_url(base, maybe):
-    try:
-        return urljoin(base, maybe) if maybe else None
-    except Exception:
-        return maybe
-
-def scrape_generic_list(source_key, cfg):
+def scrape_outlinks(cfg):
     out = []
     try:
-        r = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        page_url = cfg["url"]
+        r = requests.get(page_url, headers=HEADERS, timeout=25)
         r.raise_for_status()
         soup = BeautifulSoup(r.content, "lxml")
-        for card in soup.select(cfg["item"]):
-            rec = {}
-            for field, sel in cfg["fields"].items():
-                if sel.endswith("[href]"):
-                    tag = card.select_one(sel.split("[")[0])
-                    rec[field] = abs_url(cfg["url"], tag.get("href") if tag else None)
-                elif sel.endswith("[src]"):
-                    tag = card.select_one(sel.split("[")[0])
-                    rec[field] = abs_url(cfg["url"], tag.get("src") if tag else None)
-                else:
-                    rec[field] = text_or_none(card.select_one(sel))
-            if not rec.get("image") and rec.get("url"):
-                rec["image"] = get_og_image(rec["url"])
-            rec = {k: v for k, v in rec.items() if v}
-            rec["__type"] = cfg["type"]
+        container = None
+        for sel in (cfg.get("container") or "").split(","):
+            sel = sel.strip()
+            if not sel: continue
+            node = soup.select_one(sel)
+            if node:
+                container = node
+                break
+        if container is None:
+            container = soup  # fallback
+
+        seen = set()
+        for a in container.select("a[href]"):
+            href = a.get("href")
+            href = urljoin(page_url, href)
+            if not is_external_link(page_url, href):
+                continue
+            d = domain_of(href)
+            # ignore social/share/junk
+            if any(bad in d for bad in ("facebook.", "twitter.", "x.com", "instagram.", "linkedin.", "pinterest.", "reddit.")):
+                continue
+            key = (d, href.split("#")[0])
+            if key in seen:
+                continue
+            seen.add(key)
+            name = guess_name_from_anchor(a, href)
+            img = get_og_image(href)
+            rec = make_record(cfg["type"], name, href, image=img, tags=cfg.get("tags", []))
             out.append(rec)
-        log(f"[catalog] {source_key}: scraped {len(out)} items")
+
+        log(f"[catalog] outlinks: {len(out)} from {page_url}")
     except Exception as ex:
-        log(f"[catalog] {source_key} error: {ex}")
+        log(f"[catalog] outlinks error: {ex}")
     return out
 
-def dedupe_by_key(items, key_fn):
-    seen, out = set(), []
-    for x in items:
-        k = key_fn(x)
-        if not k or k in seen:
-            continue
-        seen.add(k); out.append(x)
+def scrape_single(cfg):
+    out = []
+    try:
+        page_url = cfg["url"]
+        name = cfg.get("name") or domain_of(page_url)
+        img = get_og_image(page_url)
+        rec = make_record(cfg["type"], name, page_url, image=img,
+                          location=cfg.get("location"), tags=cfg.get("tags", []))
+        out.append(rec)
+        log(f"[catalog] single: {name}")
+    except Exception as ex:
+        log(f"[catalog] single error: {ex}")
     return out
-
-def classify_record(rec):
-    t = rec.pop("__type", "").lower()
-    if t == "program":
-        return "programs", {
-            "name": rec.get("name"),
-            "category": rec.get("category") or "—",
-            "description": rec.get("description") or rec.get("focus") or "—",
-            "location": rec.get("location") or "—",
-            "url": rec.get("url"),
-            "image": rec.get("image"),
-            "tags": []
-        }
-    if t == "expert":
-        rating = None
-        try:
-            rating = float(rec.get("rating", "").strip())
-        except Exception:
-            pass
-        return "experts", {
-            "name": rec.get("name"),
-            "specialty": rec.get("specialty") or "—",
-            "location": rec.get("location") or "—",
-            "rating": rating,
-            "url": rec.get("url"),
-            "image": rec.get("image"),
-            "tags": []
-        }
-    return "institutions", {
-        "name": rec.get("name"),
-        "focus": rec.get("focus") or rec.get("description") or "—",
-        "location": rec.get("location") or "—",
-        "url": rec.get("url"),
-        "image": rec.get("image"),
-        "tags": []
-    }
 
 def build_catalog():
-    all_raw = []
+    raw = []
     for key, cfg in SITE_MAP.items():
-        all_raw.extend(scrape_generic_list(key, cfg))
+        mode = cfg.get("mode", "outlinks")
+        if mode == "single":
+            raw.extend(scrape_single(cfg))
+        else:
+            raw.extend(scrape_outlinks(cfg))
 
+    # Dedupe broadly by (name + url domain)
     def kfn(x):
         nm = (x.get("name") or "").strip().lower()
-        domain = urlparse(x.get("url") or "").netloc.lower()
-        return f"{nm}|{domain}" if nm else None
+        domain = domain_of(x.get("url") or "")
+        return f"{nm}|{domain}" if nm and domain else None
 
-    all_raw = dedupe_by_key(all_raw, kfn)
+    deduped = []
+    seen = set()
+    for x in raw:
+        k = kfn(x)
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        deduped.append(x)
 
+    # Normalize buckets
     bucketed = {"programs": [], "experts": [], "institutions": []}
-    for rec in all_raw:
-        kind, norm = classify_record(rec)
-        if norm.get("name") and norm.get("url"):
-            bucketed[kind].append(norm)
+    for rec in deduped:
+        t = (rec.get("__type") or "").lower()
+        if t == "program":
+            bucketed["programs"].append({
+                "name": rec.get("name"),
+                "category": "—",
+                "description": "External resource from roadmap",
+                "location": "—",
+                "url": rec.get("url"),
+                "image": rec.get("image"),
+                "tags": rec.get("tags", [])
+            })
+        elif t == "expert":
+            bucketed["experts"].append({
+                "name": rec.get("name"),
+                "specialty": "—",
+                "location": rec.get("location") or "—",
+                "rating": None,
+                "url": rec.get("url"),
+                "image": rec.get("image"),
+                "tags": rec.get("tags", [])
+            })
+        else:
+            bucketed["institutions"].append({
+                "name": rec.get("name"),
+                "focus": "Longevity / Clinic / Biotech",
+                "location": rec.get("location") or "—",
+                "url": rec.get("url"),
+                "image": rec.get("image"),
+                "tags": rec.get("tags", [])
+            })
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     (DATA_DIR / "catalog.json").write_text(json.dumps(bucketed, indent=2), encoding="utf-8")
@@ -339,6 +403,6 @@ if __name__ == "__main__":
     ap.add_argument("--build-catalog", action="store_true", help="Scrape and write output/data/catalog.json")
     args = ap.parse_args()
 
-    build(args.query)
+    build(args.query)            # evidence/news → items.json (sorted newest-first)
     if args.build_catalog:
-        build_catalog()
+        build_catalog()          # programs/experts/institutions → catalog.json
