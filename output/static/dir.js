@@ -3,8 +3,16 @@
   const search = document.getElementById('dirSearch');
 
   function card(html){ return `<div class="card"><div class="txt">${html}</div></div>`; }
+  function faviconURL(url){
+    try{ const d=new URL(url).hostname; return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=64`; }catch{return "";}
+  }
   function itemBlock(x, meta){
-    const img = x.image ? `<img src="${x.image}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:10px;margin-right:12px;border:1px solid #dee2e6">` : "";
+    const fav = faviconURL(x.url);
+    const img = x.image
+      ? `<img src="${x.image}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:10px;margin-right:12px;border:1px solid #dee2e6">`
+      : `<div style="width:90px;height:90px;border-radius:10px;margin-right:12px;border:1px solid #dee2e6;display:flex;align-items:center;justify-content:center;background:#f8f9fa">
+           ${fav ? `<img src="${fav}" alt="" style="width:20px;height:20px;border-radius:4px">` : ''}
+         </div>`;
     const line2 = meta || "";
     return `<div style="display:flex;align-items:flex-start">
       ${img}
