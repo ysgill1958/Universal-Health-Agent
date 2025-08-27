@@ -1,19 +1,27 @@
-name: Build & Deploy (Daily)
+name: Build & Deploy (Hourly)
 
 on:
   push:
     branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 * * * *"   # every hour at minute 0 (UTC)
   workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -25,6 +33,7 @@ jobs:
       - name: Build site (scrape evidence + catalog)
         run: |
           python app.py --query "longevity therapy OR chronic disease treatment evidence" --build-catalog > build.log 2>&1 || true
+          echo "---- tail build.log ----"
           tail -n 200 build.log || true
 
       - name: Deploy to gh-pages
