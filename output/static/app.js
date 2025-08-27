@@ -8,6 +8,10 @@
   const discWrap   = document.getElementById('disciplineChips');
   const areaWrap   = document.getElementById('areaChips');
 
+  const dateStartEl = document.getElementById('dateStart');
+  const dateEndEl   = document.getElementById('dateEnd');
+  const clearDates  = document.getElementById('clearDates');
+
   // --- Load data ---
   let all = [];
   try {
@@ -66,6 +70,12 @@
     'Meta-analysis/Review': ['meta-analysis','systematic review','umbrella review','scoping review']
   };
 
+  function toISODateOnly(s){
+    if(!s) return "";
+    // Expect formats like "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD"
+    return (s || "").slice(0,10);
+  }
+
   function deriveFacet(hay, dict){
     const hits = [];
     for (const [label, words] of Object.entries(dict)) {
@@ -78,6 +88,7 @@
     const hay = ((item.title || '') + ' ' + (item.summary || '') + ' ' + (item.source || '')).toLowerCase();
     return {
       ...item,
+      _dateOnly: toISODateOnly(item.date),
       _topics: deriveFacet(hay, TOPICS),
       _disciplines: deriveFacet(hay, DISCIPLINES),
       _areas: deriveFacet(hay, AREAS)
@@ -110,12 +121,9 @@
   const areaState  = makeChips(areaWrap,   Object.keys(AREAS));
 
   // --- Card rendering with image/text fallback ---
-  function domainFrom(url){
-    try { return new URL(url).hostname; } catch { return ""; }
-  }
+  function domainFrom(url){ try { return new URL(url).hostname; } catch { return ""; } }
   function faviconURL(url){
-    const d = domainFrom(url);
-    if (!d) return "";
+    const d = domainFrom(url); if (!d) return "";
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=64`;
   }
   function textMediaHTML(i){
@@ -133,9 +141,7 @@
         </div>
       </div>`;
   }
-  function imageMediaHTML(i){
-    return `<img class="thumb" loading="lazy" src="${i.image}" alt="">`;
-  }
+  function imageMediaHTML(i){ return `<img class="thumb" loading="lazy" src="${i.image}" alt="">`; }
   function badge(txt, cls){ return `<span class="badge ${cls||''}">${txt}</span>`; }
 
   function cardHTML(i){
@@ -159,27 +165,45 @@
   }
 
   // --- Filtering & render ---
+  function withinDate(i){
+    const d = i._dateOnly;
+    const ds = dateStartEl.value || null;
+    const de = dateEndEl.value || null;
+    if (ds && d < ds) return false;
+    if (de && d > de) return false;
+    return true;
+  }
+
   function matchFacet(itemVals, state){
     if (state.size === 0) return true;
     return [...state].every(x => itemVals.includes(x));
   }
+
   function filterAll(){
-    const term=(q.value||'').toLowerCase();
+    const term=(q?.value||'').toLowerCase();
     return all.filter(i=>{
       const termOk = !term || ( (i.title||'').toLowerCase().includes(term) || (i.summary||'').toLowerCase().includes(term) );
+      const dateOk = withinDate(i);
       const topicOk = matchFacet(i._topics||[], topicState);
       const discOk  = matchFacet(i._disciplines||[], discState);
       const areaOk  = matchFacet(i._areas||[], areaState);
-      return termOk && topicOk && discOk && areaOk;
+      return termOk && dateOk && topicOk && discOk && areaOk;
     });
   }
+
   function render(list){
-    grid.innerHTML = list.map(cardHTML).join('');
-    count.textContent = `${list.length} results`;
-    empty.style.display = list.length ? 'none' : '';
+    const limited = list.slice(0, 25); // show only 25 on homepage
+    grid.innerHTML = limited.map(cardHTML).join('');
+    count.textContent = `${limited.length}/${list.length} shown • ${all.length} total`;
+    empty.style.display = limited.length ? 'none' : '';
   }
+
   function refresh(){ render(filterAll()); }
 
-  let t=null; q.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(refresh, 160); });
-  render(all);
+  let t=null;
+  if (q) q.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(refresh, 160); });
+  [dateStartEl, dateEndEl].forEach(el => el?.addEventListener('change', refresh));
+  clearDates?.addEventListener('click', ()=>{ if(dateStartEl) dateStartEl.value=''; if(dateEndEl) dateEndEl.value=''; refresh(); });
+
+  refresh();
 })();
