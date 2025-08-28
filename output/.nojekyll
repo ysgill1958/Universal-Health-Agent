@@ -1,1 +1,0 @@
-open("output/.nojekyll", "w").close()
