@@ -1,0 +1,10 @@
+Initial placeholder logs.
+[2025-08-28 13:37 UTC] Google News: 50
+[2025-08-28 13:37 UTC] Fetch error PubMed: 422 Client Error: Unprocessable Entity for url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term=longevity%20therapy%20OR%20chronic%20disease%20treatment%20evidence&sort=date
+[2025-08-28 13:37 UTC] Fetch error NIH: 404 Client Error: Not Found for url: https://www.nih.gov/news-events/news-releases/rss.xml
+[2025-08-28 13:37 UTC] Fetch error WHO: 404 Client Error: not found for url: https://www.who.int/feeds/entity/mediacentre/news/en/rss.xml
+[2025-08-28 13:37 UTC] Nature: 50
+[2025-08-28 13:38 UTC] Fetch error BMJ: HTTPSConnectionPool(host='www.bmj.com', port=443): Read timed out. (read timeout=20)
+[2025-08-28 13:38 UTC] Lancet: 31
+[2025-08-28 13:38 UTC] Deduped: 127
+[2025-08-28 13:40 UTC] Wrote 127 items → output/data/items.json
