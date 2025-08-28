@@ -15,7 +15,6 @@ import time
 import hashlib
 import argparse
 import email.utils as eut
-import calendar
 from time import mktime
 from datetime import datetime, timezone
 from pathlib import Path
@@ -355,31 +354,31 @@ def write_archives(items):
   </div>
 </div>
 <script>
-(async function(){
+(async function(){{
   const box = document.getElementById('q');
   const results = document.getElementById('results');
   const monthgrid = document.getElementById('monthgrid');
   let all = [];
-  try {
-    const r = await fetch('../data/items.json?m=' + Date.now(), {cache:'no-store'});
+  try {{
+    const r = await fetch('../data/items.json?m=' + Date.now(), {{cache:'no-store'}});
     if (r.ok) all = await r.json();
-  } catch(_){}
+  }} catch(_){{}}
 
-  function domain(u){ try { return new URL(u).hostname; } catch { return ''; } }
-  function fav(u){ const d = domain(u); return d ? ('https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d) + '&sz=64') : ''; }
-  function isNew(dateStr){
+  function domain(u){{ try {{ return new URL(u).hostname; }} catch {{ return ''; }} }}
+  function fav(u){{ const d = domain(u); return d ? ('https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d) + '&sz=64') : ''; }}
+  function isNew(dateStr){{
     if(!dateStr) return false;
     const d = new Date(dateStr.replace(' ','T') + 'Z');
     const now = new Date();
     const diff = now - d;
     return diff >= 0 && diff <= 86400000;
-  }
-  function card(i){
+  }}
+  function card(i){{
     const title=i.title||'', link=i.link||'#', date=i.date||'', summary=i.summary||'', image=i.image||'';
     const newb = isNew(date) ? "<span class='badge b-new'>NEW</span>" : "";
     const media = image
       ? "<img class='thumb' loading='lazy' src='" + image + "' alt=''>"
-      : (function(){
+      : (function(){{
           const f=fav(link);
           const icon = f ? ("<img class='favicon' src='" + f + "' alt=''>") : "<span class='favicon'></span>";
           return "<div class='media'><div class='media__inner'><div class='media__row'>" + icon +
@@ -389,24 +388,24 @@ def write_archives(items):
     return "<div class='card'><div class='inner'><div class='txt'>" + newb +
            "<h3 style='margin:.4rem 0'><a target='_blank' href='" + link + "'>" + title + "</a></h3>" +
            "<div class='muted'>" + date + "</div><p>" + summary + "</p></div><div>" + media + "</div></div></div>";
-  }
-  function render(list){ results.innerHTML = list.map(card).join(''); }
+  }}
+  function render(list){{ results.innerHTML = list.map(card).join(''); }}
 
-  function refresh(){
+  function refresh(){{
     const term = (box.value||'').toLowerCase();
-    if (!term) {
+    if (!term) {{
       results.style.display = 'none';
       monthgrid.style.display = '';
       results.innerHTML = '';
       return;
-    }
+    }}
     const filt = all.filter(i => ((i.title||'').toLowerCase().includes(term) || (i.summary||'').toLowerCase().includes(term)));
     render(filt);
     monthgrid.style.display = 'none';
     results.style.display = '';
-  }
-  box?.addEventListener('input', () => { clearTimeout(window.__arcT); window.__arcT = setTimeout(refresh, 160); });
-})();
+  }}
+  box?.addEventListener('input', () => {{ clearTimeout(window.__arcT); window.__arcT = setTimeout(refresh, 160); }});
+}})();
 </script>
 """
         (ARCHIVE_DIR / f"{ym}.html").write_text(html, encoding="utf-8")
@@ -429,25 +428,25 @@ def write_archives(items):
   <div class='grid'>{''.join(month_cards)}</div>
 </div>
 <script>
-(async function(){
+(async function(){{
   const box=document.getElementById('q'); const out=document.getElementById('results');
-  let all=[]; try{const r=await fetch('../data/items.json?m='+Date.now(),{cache:'no-store'}); if(r.ok) all=await r.json();}catch(_){}}
+  let all=[]; try{{const r=await fetch('../data/items.json?m='+Date.now(),{{cache:'no-store'}}); if(r.ok) all=await r.json();}}catch(_){{}}
 
-  function domain(u){ try{return new URL(u).hostname;}catch{return ''} }
-  function fav(u){ const d=domain(u); return d?('https://www.google.com/s2/favicons?domain='+encodeURIComponent(d)+'&sz=64'):'' }
-  function isNew(dateStr){ if(!dateStr) return false; const d=new Date(dateStr.replace(' ','T')+'Z'); const now=new Date(); return (now-d)>=0 && (now-d)<=86400000; }
-  function card(i){
+  function domain(u){{ try{{return new URL(u).hostname;}}catch{{return ''}} }}
+  function fav(u){{ const d=domain(u); return d?('https://www.google.com/s2/favicons?domain='+encodeURIComponent(d)+'&sz=64'):'' }}
+  function isNew(dateStr){{ if(!dateStr) return false; const d=new Date(dateStr.replace(' ','T')+'Z'); const now=new Date(); return (now-d)>=0 && (now-d)<=86400000; }}
+  function card(i){{
     const title=i.title||'', link=i.link||'#', date=i.date||'', summary=i.summary||'', image=i.image||'';
     const newb=isNew(date)?"<span class='badge b-new'>NEW</span>":"";
     const media=image?("<img class='thumb' loading='lazy' src='"+image+"' alt=''>"):
-      (function(){const f=fav(link); const icon=f?("<img class='favicon' src='"+f+"' alt=''>"):"<span class='favicon'></span>";
-        return "<div class='media'><div class='media__inner'><div class='media__row'>"+icon+"<div class='media__title'>"+title.slice(0,120)+"</div></div><div class='media__summary'>"+(summary||'No summary available.').slice(0,180)+"</div></div></div>"; })();
+      (function(){{const f=fav(link); const icon=f?("<img class='favicon' src='"+f+"' alt=''>"):"<span class='favicon'></span>";
+        return "<div class='media'><div class='media__inner'><div class='media__row'>"+icon+"<div class='media__title'>"+title.slice(0,120)+"</div></div><div class='media__summary'>"+(summary||'No summary available.').slice(0,180)+"</div></div></div>"; }})();
     return "<div class='card'><div class='inner'><div class='txt'>"+newb+"<h3 style='margin:.4rem 0'><a target='_blank' href='"+link+"'>"+title+"</a></h3><div class='muted'>"+date+"</div><p>"+summary+"</p></div><div>"+media+"</div></div></div>";
-  }
-  function render(list){ out.innerHTML=list.map(card).join(''); }
-  function refresh(){ const term=(box.value||'').toLowerCase(); if(!term){ out.innerHTML=''; return; } render(all.filter(i=>((i.title||'').toLowerCase().includes(term)||(i.summary||'').toLowerCase().includes(term)))); }
-  box?.addEventListener('input',()=>{ clearTimeout(window.__t); window.__t=setTimeout(refresh,160); });
-})();
+  }}
+  function render(list){{ out.innerHTML=list.map(card).join(''); }}
+  function refresh(){{ const term=(box.value||'').toLowerCase(); if(!term){{ out.innerHTML=''; return; }} render(all.filter(i=>((i.title||'').toLowerCase().includes(term)||(i.summary||'').toLowerCase().includes(term)))); }}
+  box?.addEventListener('input',()=>{{ clearTimeout(window.__t); window.__t=setTimeout(refresh,160); }});
+}})();
 </script>
 """
     (ARCHIVE_DIR / "index.html").write_text(idx_html, encoding="utf-8")
