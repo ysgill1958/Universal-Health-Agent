@@ -42,8 +42,10 @@ for p in (OUTPUT_DIR, DATA_DIR, STATIC_DIR, ARCHIVE_DIR):
 # Simple log file
 LOG_FILE = DATA_DIR / "logs.txt"
 
+
 def now_utc_str() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
 
 def log(msg: str) -> None:
     line = f"[{now_utc_str()}] {msg}"
@@ -63,9 +65,11 @@ def clean_text(s: str) -> str:
     s = re.sub(r"<.*?>", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+
 def truncate(s: str, n: int = 360) -> str:
     s = clean_text(s)
     return s if len(s) <= n else s[:n].rsplit(" ", 1)[0] + "…"
+
 
 def normalize_key(title: str, link: str) -> str:
     host = urlparse(link or "").netloc.lower()
@@ -73,9 +77,11 @@ def normalize_key(title: str, link: str) -> str:
     t = re.sub(r"[^a-z0-9 ]+", "", t)
     return hashlib.sha1(f"{host}|{t}".encode()).hexdigest()
 
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Universal-Beat/3.0; +GitHubPages Agent)"
 }
+
 
 def get_og_image(url: str, timeout: int = 8) -> str | None:
     try:
@@ -110,11 +116,13 @@ def google_news_feed(query: str, lang="en-IN") -> str:
         f"q={requests.utils.quote(query)}&hl={lang}&gl=IN&ceid=IN:{lang.split('-')[0]}"
     )
 
+
 def pubmed_feed(query: str) -> str:
     return (
         "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi"
         f"?db=pubmed&term={requests.utils.quote(query)}&sort=date"
     )
+
 
 BASE_FEEDS = [
     ("NIH", "https://www.nih.gov/news-events/news-releases/rss.xml"),
@@ -184,6 +192,7 @@ def fetch_feed(source: str, url: str, limit: int, delay: float):
             time.sleep(delay)
     return items
 
+
 def aggregate(
     query: str,
     per_feed_limit: int = 80,
@@ -235,10 +244,11 @@ def aggregate(
     return deduped
 
 
-# -------------------------- Archives (with NEW badge) --------------------------
+# -------------------------- Archives (with NEW badge + global search) --------------------------
 
 def write_archives(items):
-    """Create archive pages by month with cards (image + summary) and an archive index with global search."""
+    """Create archive pages by month with cards (image + summary + NEW) and a global search on all archive pages and index."""
+
     def is_new_24h(date_str: str) -> bool:
         if not date_str:
             return False
@@ -292,20 +302,8 @@ def write_archives(items):
         "input[type=search]{width:100%;padding:12px;border-radius:10px;border:1px solid #dee2e6;background:#fff;color:#212529}"
     )
 
-    # Month pages
-    for ym, arr in by_month.items():
-        arr.sort(key=lambda x: x.get("date") or "", reverse=True)
-        title = f"Archive — {ym}" if ym != "unknown" else "Archive"
-
-        head = (
-            "<!doctype html><meta charset='utf-8'><title>" + title + "</title>"
-            "<style>" + base_css + "</style>"
-            "<div class='wrap'>"
-            f"<div class='head'><h1>{title}</h1><a href='../index.html'>← Home</a></div>"
-            "<p>Items listed newest first. Each entry shows date, headline, and a short summary.</p>"
-            "<div class='grid'>"
-        )
-        body = []
+    def month_cards_html(arr):
+        parts = []
         for it in arr:
             title_txt = (it.get("title") or "").replace("<", "&lt;").replace(">", "&gt;")
             link = it.get("link") or "#"
@@ -320,14 +318,13 @@ def write_archives(items):
                 fav = favicon_url(link)
                 icon = f"<img class='favicon' src='{fav}' alt=''>" if fav else "<span class='favicon'></span>"
                 media = (
-                    "<div class='media'>"
-                    "<div class='media__inner'>"
+                    "<div class='media'><div class='media__inner'>"
                     f"<div class='media__row'>{icon}<div class='media__title'>{title_txt[:120]}</div></div>"
                     f"<div class='media__summary'>{(summary or 'No summary available.')[:180]}</div>"
                     "</div></div>"
                 )
 
-            body.append(
+            parts.append(
                 "<div class='card'><div class='inner'>"
                 f"<div class='txt'>{new_badge}"
                 f"<h3 style='margin:.4rem 0'><a target='_blank' href='{link}'>{title_txt}</a></h3>"
@@ -336,21 +333,89 @@ def write_archives(items):
                 f"<div>{media}</div>"
                 "</div></div>"
             )
+        return "".join(parts)
 
-        html = head + "".join(body) + "</div></div>"
+    # Monthly pages with global search
+    for ym, arr in by_month.items():
+        arr.sort(key=lambda x: x.get("date") or "", reverse=True)
+        title = f"Archive — {ym}" if ym != "unknown" else "Archive"
+
+        month_grid = month_cards_html(arr)
+
+        html = f"""<!doctype html><meta charset='utf-8'><title>{title}</title>
+<style>{base_css}</style>
+<div class='wrap'>
+  <div class='head'><h1>{title}</h1><a href='../index.html'>← Home</a></div>
+  <p>Type to search all time; clear the box to see this month.</p>
+  <div class='searchbar'><input id='q' type='search' placeholder='Search all archived stories… (title or summary)'></div>
+
+  <div id='results' class='grid' style='display:none'></div>
+  <div id='monthgrid' class='grid'>
+    {month_grid}
+  </div>
+</div>
+<script>
+(async function(){
+  const box = document.getElementById('q');
+  const results = document.getElementById('results');
+  const monthgrid = document.getElementById('monthgrid');
+  let all = [];
+  try {
+    const r = await fetch('../data/items.json?m=' + Date.now(), {cache:'no-store'});
+    if (r.ok) all = await r.json();
+  } catch(_){}
+
+  function domain(u){ try { return new URL(u).hostname; } catch { return ''; } }
+  function fav(u){ const d = domain(u); return d ? ('https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d) + '&sz=64') : ''; }
+  function isNew(dateStr){
+    if(!dateStr) return false;
+    const d = new Date(dateStr.replace(' ','T') + 'Z');
+    const now = new Date();
+    const diff = now - d;
+    return diff >= 0 && diff <= 86400000;
+  }
+  function card(i){
+    const title=i.title||'', link=i.link||'#', date=i.date||'', summary=i.summary||'', image=i.image||'';
+    const newb = isNew(date) ? "<span class='badge b-new'>NEW</span>" : "";
+    const media = image
+      ? "<img class='thumb' loading='lazy' src='" + image + "' alt=''>"
+      : (function(){
+          const f=fav(link);
+          const icon = f ? ("<img class='favicon' src='" + f + "' alt=''>") : "<span class='favicon'></span>";
+          return "<div class='media'><div class='media__inner'><div class='media__row'>" + icon +
+                 "<div class='media__title'>" + title.slice(0,120) + "</div></div>" +
+                 "<div class='media__summary'>" + (summary||'No summary available.').slice(0,180) + "</div></div></div>";
+        })();
+    return "<div class='card'><div class='inner'><div class='txt'>" + newb +
+           "<h3 style='margin:.4rem 0'><a target='_blank' href='" + link + "'>" + title + "</a></h3>" +
+           "<div class='muted'>" + date + "</div><p>" + summary + "</p></div><div>" + media + "</div></div></div>";
+  }
+  function render(list){ results.innerHTML = list.map(card).join(''); }
+
+  function refresh(){
+    const term = (box.value||'').toLowerCase();
+    if (!term) {
+      results.style.display = 'none';
+      monthgrid.style.display = '';
+      results.innerHTML = '';
+      return;
+    }
+    const filt = all.filter(i => ((i.title||'').toLowerCase().includes(term) || (i.summary||'').toLowerCase().includes(term)));
+    render(filt);
+    monthgrid.style.display = 'none';
+    results.style.display = '';
+  }
+  box?.addEventListener('input', () => { clearTimeout(window.__arcT); window.__arcT = setTimeout(refresh, 160); });
+})();
+</script>
+"""
         (ARCHIVE_DIR / f"{ym}.html").write_text(html, encoding="utf-8")
 
-    # Archive index with global search
+    # Archive index with global search across all time
     months = sorted(by_month.keys(), reverse=True)
     month_cards = []
     for ym in months:
-        if ym == "unknown":
-            name = "Unknown"
-        else:
-            try:
-                name = datetime.strptime(ym, "%Y-%m").strftime("%B %Y")
-            except Exception:
-                name = ym
+        name = "Unknown" if ym == "unknown" else (datetime.strptime(ym, "%Y-%m").strftime("%B %Y"))
         month_cards.append(f"<div class='card'><div class='txt'><a href='./{ym}.html'>{name}</a></div></div>")
 
     idx_html = f"""<!doctype html><meta charset='utf-8'><title>Archive</title>
@@ -358,79 +423,31 @@ def write_archives(items):
 <div class='wrap'>
   <div class='head'><h1>Archive</h1><a href='../index.html'>← Home</a></div>
   <p>Browse by month or use the search below to find stories across all time.</p>
-
-  <div class='searchbar'>
-    <input id='q' type='search' placeholder='Search all archived stories… (title or summary)'>
-  </div>
+  <div class='searchbar'><input id='q' type='search' placeholder='Search all archived stories… (title or summary)'></div>
   <div id='results' class='grid'></div>
-
   <h2 style='margin-top:18px'>Browse by month</h2>
-  <div class='grid'>
-    {''.join(month_cards)}
-  </div>
+  <div class='grid'>{''.join(month_cards)}</div>
 </div>
-
 <script>
-(async function(){{
-  const box = document.getElementById('q');
-  const out = document.getElementById('results');
-  let all = [];
-  try {{
-    const r = await fetch('../data/items.json?m=' + Date.now(), {{cache:'no-store'}});
-    if (r.ok) all = await r.json();
-  }} catch(_){{
-    // ignore
-  }}
+(async function(){
+  const box=document.getElementById('q'); const out=document.getElementById('results');
+  let all=[]; try{const r=await fetch('../data/items.json?m='+Date.now(),{cache:'no-store'}); if(r.ok) all=await r.json();}catch(_){}}
 
-  function domain(u){{ try {{ return new URL(u).hostname; }} catch {{ return ''; }} }}
-  function fav(u){{ const d = domain(u); return d ? ('https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d) + '&sz=64') : ''; }}
-  function isNew(dateStr){{
-    if(!dateStr) return false;
-    const d = new Date(dateStr.replace(' ','T') + 'Z'); // UTC
-    const now = new Date();
-    const diff = now - d;
-    return diff >= 0 && diff <= 86400000;
-  }}
-
-  function card(i){{
-    const title = i.title || '';
-    const link = i.link || '#';
-    const date = i.date || '';
-    const summary = i.summary || '';
-    const image = i.image || '';
-    const newb = isNew(date) ? "<span class='badge b-new'>NEW</span>" : "";
-
-    let media = "";
-    if (image) {{
-      media = "<img class='thumb' loading='lazy' src='" + image + "' alt=''>";
-    }} else {{
-      const f = fav(link);
-      const icon = f ? ("<img class='favicon' src='" + f + "' alt=''>") : "<span class='favicon'></span>";
-      media = "<div class='media'><div class='media__inner'><div class='media__row'>"
-            + icon + "<div class='media__title'>" + title.slice(0,120) + "</div></div>"
-            + "<div class='media__summary'>" + (summary || 'No summary available.').slice(0,180) + "</div>"
-            + "</div></div>";
-    }}
-
-    return "<div class='card'><div class='inner'>"
-         + "<div class='txt'>" + newb
-         + "<h3 style='margin:.4rem 0'><a target='_blank' href='" + link + "'>" + title + "</a></h3>"
-         + "<div class='muted'>" + date + "</div>"
-         + "<p>" + summary + "</p></div>"
-         + "<div>" + media + "</div>"
-         + "</div></div>";
-  }}
-
-  function render(list){{ out.innerHTML = list.map(card).join(''); }}
-  function refresh(){{
-    const term = (box.value || '').toLowerCase();
-    if (!term) {{ out.innerHTML = ''; return; }}
-    const filt = all.filter(i => ((i.title||'').toLowerCase().includes(term) || (i.summary||'').toLowerCase().includes(term)));
-    render(filt);
-  }}
-
-  box?.addEventListener('input', () => {{ clearTimeout(window.__t); window.__t = setTimeout(refresh, 160); }});
-}})();
+  function domain(u){ try{return new URL(u).hostname;}catch{return ''} }
+  function fav(u){ const d=domain(u); return d?('https://www.google.com/s2/favicons?domain='+encodeURIComponent(d)+'&sz=64'):'' }
+  function isNew(dateStr){ if(!dateStr) return false; const d=new Date(dateStr.replace(' ','T')+'Z'); const now=new Date(); return (now-d)>=0 && (now-d)<=86400000; }
+  function card(i){
+    const title=i.title||'', link=i.link||'#', date=i.date||'', summary=i.summary||'', image=i.image||'';
+    const newb=isNew(date)?"<span class='badge b-new'>NEW</span>":"";
+    const media=image?("<img class='thumb' loading='lazy' src='"+image+"' alt=''>"):
+      (function(){const f=fav(link); const icon=f?("<img class='favicon' src='"+f+"' alt=''>"):"<span class='favicon'></span>";
+        return "<div class='media'><div class='media__inner'><div class='media__row'>"+icon+"<div class='media__title'>"+title.slice(0,120)+"</div></div><div class='media__summary'>"+(summary||'No summary available.').slice(0,180)+"</div></div></div>"; })();
+    return "<div class='card'><div class='inner'><div class='txt'>"+newb+"<h3 style='margin:.4rem 0'><a target='_blank' href='"+link+"'>"+title+"</a></h3><div class='muted'>"+date+"</div><p>"+summary+"</p></div><div>"+media+"</div></div></div>";
+  }
+  function render(list){ out.innerHTML=list.map(card).join(''); }
+  function refresh(){ const term=(box.value||'').toLowerCase(); if(!term){ out.innerHTML=''; return; } render(all.filter(i=>((i.title||'').toLowerCase().includes(term)||(i.summary||'').toLowerCase().includes(term)))); }
+  box?.addEventListener('input',()=>{ clearTimeout(window.__t); window.__t=setTimeout(refresh,160); });
+})();
 </script>
 """
     (ARCHIVE_DIR / "index.html").write_text(idx_html, encoding="utf-8")
@@ -494,10 +511,12 @@ def domain_of(u: str) -> str:
     except Exception:
         return ""
 
+
 def is_external_link(page_url: str, href: str) -> bool:
     if not href:
         return False
     return domain_of(page_url) != domain_of(href)
+
 
 def guess_name_from_anchor(a_tag, href: str) -> str:
     txt = (a_tag.get_text(" ", strip=True) if a_tag else "")[:120]
@@ -508,10 +527,12 @@ def guess_name_from_anchor(a_tag, href: str) -> str:
         dom = dom[4:]
     return dom or href
 
+
 def make_record(kind: str, name: str, href: str, image: str | None = None, **extra):
     rec = {"name": name, "url": href, "image": image, "__type": kind}
     rec.update(extra)
     return rec
+
 
 SITE_MAP = {
     "scispot_top20_longevity_biotechs": {
@@ -551,6 +572,7 @@ SITE_MAP = {
         "tags": ["integrative", "naturopathic", "clinic"],
     },
 }
+
 
 def scrape_outlinks(cfg: dict):
     out = []
@@ -595,6 +617,7 @@ def scrape_outlinks(cfg: dict):
         log(f"[catalog] outlinks error: {ex}")
     return out
 
+
 def scrape_single(cfg: dict):
     out = []
     try:
@@ -615,6 +638,7 @@ def scrape_single(cfg: dict):
     except Exception as ex:
         log(f"[catalog] single error: {ex}")
     return out
+
 
 def build_catalog():
     raw = []
