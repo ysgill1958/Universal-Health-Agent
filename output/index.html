@@ -1,178 +1,38 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Universal Sci & Tech Breakthrough Beat</title>
-  <style>
-    :root{
-      --bg:#f8f9fa; --text:#212529; --muted:#6c757d; --card:#ffffff;
-      --border:#dee2e6; --chip:#e9ecef; --chipText:#495057; --link:#0d6efd;
-      --cat1:#d0ebff; --cat1t:#084298; --cat2:#ffe066; --cat2t:#7c5800; --cat3:#c3fae8; --cat3t:#0c5460;
-      --hdr1:#7c4dff; --hdr2:#00e0b8; --hdr3:#ff7ab6; --hdr4:#ffd166;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
-
-    /* Header */
-    .hero{position:relative;color:#fff;background:
-      radial-gradient(1200px 300px at -5% -40%, rgba(124,77,255,.35), transparent 60%),
-      radial-gradient(900px 260px at 110% -30%, rgba(0,224,184,.35), transparent 60%),
-      linear-gradient(135deg, var(--hdr1) 0%, var(--hdr2) 45%, var(--hdr3) 85%)}
-    .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg, rgba(255,255,255,.25), rgba(255,255,255,0) 40%, rgba(255,255,255,.25) 80%) no-repeat;background-size:200% 200%;animation:shimmer 10s linear infinite;pointer-events:none;mix-blend-mode:soft-light}
-    @keyframes shimmer{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
-    .hero .container{max-width:1140px;margin:0 auto;padding:28px 16px}
-    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .logo{width:42px;height:42px;border-radius:12px;background:conic-gradient(from 180deg at 50% 50%,var(--hdr1),var(--hdr2),var(--hdr3),var(--hdr4),var(--hdr1));box-shadow:0 8px 24px rgba(0,0,0,.25), inset 0 0 0 2px rgba(255,255,255,.25)}
-    .title{margin:0;font-size:28px;letter-spacing:.3px}
-    .subtitle{margin:4px 0 0 0;color:#f1f3f5;font-size:14px}
-    .navchips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .navchips a{display:inline-block;padding:8px 12px;border-radius:999px;font-size:13px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);text-decoration:none;backdrop-filter: blur(4px)}
-    .navchips a:hover{background:rgba(255,255,255,.26)}
-
-    /* Main */
-    .container{max-width:1140px;margin:0 auto;padding:16px}
-
-    /* Ticker + toggle */
-    .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 12px}
-    .ticker{background:#e9ecef;color:#495057;padding:6px 12px;border-radius:999px;font-size:14px}
-    #toggleFilters{border:1px solid var(--border);background:#fff;color:#212529;padding:6px 12px;border-radius:999px;cursor:pointer}
-    #toggleFilters[aria-expanded="true"]{background:#f1f3f5}
-    .spacer{flex:1}
-
-    /* Collapsible filters panel */
-    .controls{display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin:0 0 14px}
-    .controls.open{display:block}
-    input[type=search], input[type=date]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#fff;color:#212529}
-    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-    .row-inline{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chipText);padding:6px 10px;border-radius:999px;border:1px solid var(--border);cursor:pointer;font-size:.86em}
-
-    .grid{display:grid;gap:14px} @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-    .inner{display:grid;gap:12px;grid-template-columns:1fr 200px}
-    @media(max-width:719px){.inner{grid-template-columns:1fr}}
-    .txt{padding:14px}
-    .thumb{width:100%;height:100%;object-fit:cover;background:#f1f3f5}
-    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.78em;margin:0 6px 6px 0;border:1px solid var(--border);background:#e9ecef;color:#495057}
-    .b-topic{background:#d0ebff;color:#084298;border-color:#b6e0ff}
-    .b-disc{background:#ffe066;color:#7c5800;border-color:#ffd43b}
-    .b-area{background:#c3fae8;color:#0c5460;border-color:#96f2d7}
-    .count{font-size:.9em;color:var(--muted)}
-    .empty{border:1px dashed var(--border);border-radius:12px;padding:14px;color:var(--muted);margin-top:10px;background:#fff}
-
-    /* Media fallback */
-    .media{width:100%;height:100%;background:#f1f3f5;border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:12px}
-    .media--text{background:#f8f9fa}
-    .media__inner{max-height:100%;overflow:hidden;text-align:left}
-    .media__title{font-weight:600;line-height:1.25;margin:0 0 6px 0;font-size:14px;color:#212529}
-    .media__summary{color:#6c757d;font-size:13px;line-height:1.35}
-    .media__row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-    .favicon{width:16px;height:16px;border-radius:4px;background:#e9ecef;flex:0 0 auto}
-
-    /* Footer */
-    footer{margin-top:28px;background:#fff;border-top:1px solid var(--border);color:var(--muted)}
-    footer .wrap{max-width:1140px;margin:0 auto;padding:18px 16px;display:grid;gap:8px}
-    .footnav{display:flex;gap:14px;flex-wrap:wrap}
-    .footnav a{color:#495057;text-decoration:none;font-size:14px}
-    .footnav a:hover{text-decoration:underline}
-    .small{font-size:12px}
-  </style>
-</head>
-<body>
-  <header class="hero">
-    <div class="container">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <h1 class="title">Universal Sci & Tech Breakthrough Beat</h1>
-          <p class="subtitle">Global S&T Info Hub</p>
-        </div>
-      </div>
-      <nav class="navchips" aria-label="Quick links">
-        <a href="index.html">Home</a>
-        <a href="directory.html">Directory</a>
-        <a href="archive/index.html">Archive</a>
-        <a href="logs.html">Logs</a>
-      </nav>
+<meta charset="utf-8">
+<title>Universal Sci & Tech Breakthrough Beat — Global S&T Info Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="./static/styles.css">
+<div class="wrap">
+  <header class="mast">
+    <div class="brand">
+      <h1>Universal Sci & Tech Breakthrough Beat</h1>
+      <div class="tag">Global S&T Info Hub</div>
     </div>
+    <nav class="nav">
+      <a class="link" href="./archive/index.html">Archive →</a>
+      <a class="link" href="./logs.html" style="margin-left:12px">Build Logs</a>
+    </nav>
   </header>
 
-  <main class="container">
-    <!-- Ticker + toggle -->
-    <div class="bar">
-      <div class="ticker">🔄 Updated hourly</div>
-      <div class="spacer"></div>
-      <button id="toggleFilters" aria-expanded="false" aria-controls="filterPanel">🔍 Show Search Filter</button>
-      <span id="count" class="count"></span>
+  <details class="filters">
+    <summary>Show Search Filter</summary>
+    <div class="filter-grid">
+      <input id="q" type="search" placeholder="Search title or summary…">
+      <label>Date start <input id="dateStart" type="date"></label>
+      <label>Date end <input id="dateEnd" type="date"></label>
+      <button id="clearDates" class="btn">Clear dates</button>
     </div>
-
-    <!-- Collapsible filters panel -->
-    <div id="filterPanel" class="controls" aria-hidden="true">
-      <div class="row">
-        <input id="q" type="search" placeholder="General search (title or summary)… e.g., metformin, RCT, Ayurveda">
-      </div>
-      <div class="row-inline">
-        <div>
-          <label for="dateStart" style="display:block;font-size:.85em;color:#6c757d;margin-bottom:4px">From</label>
-          <input id="dateStart" type="date">
-        </div>
-        <div>
-          <label for="dateEnd" style="display:block;font-size:.85em;color:#6c757d;margin-bottom:4px">To</label>
-          <input id="dateEnd" type="date">
-        </div>
-        <button id="clearDates" style="border:1px solid var(--border);background:#fff;color:#212529;padding:8px 12px;border-radius:10px;cursor:pointer;height:42px;align-self:end">Clear dates</button>
-      </div>
-      <div class="row" id="topicChips"></div>
-      <div class="row" id="disciplineChips"></div>
-      <div class="row" id="areaChips"></div>
+    <div class="chips">
+      <div id="topicChips" class="chiprow"></div>
+      <div id="disciplineChips" class="chiprow"></div>
+      <div id="areaChips" class="chiprow"></div>
     </div>
+  </details>
 
-    <!-- Results -->
-    <div id="grid" class="grid"></div>
-    <div id="empty" class="empty" style="display:none">No items matched your filters, or <code>data/items.json</code> failed to load.</div>
-    <p style="margin-top:10px"><a href="archive/index.html">Browse the full archive →</a></p>
-  </main>
+  <div id="count" class="muted"></div>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none">No results.</div>
+</div>
 
-  <footer>
-    <div class="wrap">
-      <nav class="footnav">
-        <a href="index.html">Home</a>
-        <a href="directory.html">Directory</a>
-        <a href="archive/index.html">Archive</a>
-        <a href="logs.html">Logs</a>
-      </nav>
-      <div class="small">
-        <span id="buildMeta">Last updated: — • Items: —</span><br/>
-        © 2025 Universal Sci & Tech Breakthrough Beat • Built with GitHub Pages
-      </div>
-    </div>
-  </footer>
-
-  <script src="./static/app.js"></script>
-  <script>
-    // Collapsible toggle
-    const btn = document.getElementById('toggleFilters');
-    const panel = document.getElementById('filterPanel');
-    btn.addEventListener('click', ()=>{
-      const open = panel.classList.toggle('open');
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-      btn.textContent = open ? '🔍 Hide Search Filter' : '🔍 Show Search Filter';
-    });
-
-    // Footer meta
-    (async ()=>{
-      try{
-        const r = await fetch('./data/items.json?m=' + Date.now(), {cache:'no-store'});
-        if(!r.ok) return;
-        const arr = await r.json();
-        const meta = document.getElementById('buildMeta');
-        const stamp = new Date().toUTCString();
-        meta.textContent = `Last updated: ${stamp} • Items: ${Array.isArray(arr)?arr.length:0}`;
-      }catch(_){}
-    })();
-  </script>
-</body>
-</html>
+<script src="./static/app.js"></script>
