@@ -10,7 +10,6 @@
   const dateEndEl   = document.getElementById('dateEnd');
   const clearDates  = document.getElementById('clearDates');
 
-  // Load data
   let all = [];
   try{
     const res = await fetch('./data/items.json?cb=' + Date.now(), {cache:'no-store'});
@@ -19,7 +18,6 @@
   }catch(e){
     empty.style.display = '';
     count.textContent = '0 results';
-    console.error('Failed to fetch items.json', e);
     return;
   }
   if(!Array.isArray(all) || all.length===0){
@@ -91,28 +89,6 @@
   }
   all = all.map(decorate);
 
-  function makeChips(container, labels){
-    container.innerHTML = '';
-    const state = new Set();
-    labels.forEach(lbl => {
-      const id = (container.id + '_' + lbl).replace(/\\W+/g,'_');
-      const el = document.createElement('label');
-      el.className = 'chip';
-      el.innerHTML = `<input type="checkbox" id="${id}"> ${lbl}`;
-      const cb = el.querySelector('input');
-      cb.addEventListener('change', () => {
-        if (cb.checked) state.add(lbl); else state.delete(lbl);
-        refresh();
-      });
-      container.appendChild(el);
-    });
-    return state;
-  }
-
-  const topicState = makeChips(topicsWrap, Object.keys(TOPICS));
-  const discState  = makeChips(discWrap,   Object.keys(DISCIPLINES));
-  const areaState  = makeChips(areaWrap,   Object.keys(AREAS));
-
   function domainFrom(url){ try { return new URL(url).hostname; } catch { return ""; } }
   function faviconURL(url){
     const d = domainFrom(url); if (!d) return "";
@@ -166,22 +142,21 @@
     if (state.size === 0) return true;
     return [...state].every(x => itemVals.includes(x));
   }
+
   function anyFiltersActive(){
     const term = (q?.value||'').trim();
-    return !!term || !!(dateStartEl?.value) || !!(dateEndEl?.value)
-           || topicState.size>0 || discState.size>0 || areaState.size>0;
+    return !!term || !!(dateStartEl?.value) || !!(dateEndEl?.value);
   }
+
   function filterAll(){
     const term=(q?.value||'').toLowerCase();
     return all.filter(i=>{
       const termOk = !term || ((i.title||'').toLowerCase().includes(term) || (i.summary||'').toLowerCase().includes(term));
       const dateOk = withinDate(i);
-      const topicOk = matchFacet(i._topics||[], topicState);
-      const discOk  = matchFacet(i._disciplines||[], discState);
-      const areaOk  = matchFacet(i._areas||[], areaState);
-      return termOk && dateOk && topicOk && discOk && areaOk;
+      return termOk && dateOk;
     });
   }
+
   function render(list){
     const limit = anyFiltersActive() ? list.length : 25;
     const limited = list.slice(0, limit);
