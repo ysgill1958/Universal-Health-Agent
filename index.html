@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Universal Sci & Tech Breakthrough Beat — Global S&T Info Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="./static/styles.css">
+<div class="wrap">
+  <header class="mast">
+    <div class="brand">
+      <h1>Universal Sci & Tech Breakthrough Beat</h1>
+      <div class="tag">Global S&T Info Hub</div>
+    </div>
+    <nav class="nav">
+      <a class="link" href="./archive/index.html">Archive →</a>
+    </nav>
+  </header>
+
+  <details class="filters">
+    <summary>Show Search Filter</summary>
+    <div class="filter-grid">
+      <input id="q" type="search" placeholder="Search title or summary…">
+      <label>Date start <input id="dateStart" type="date"></label>
+      <label>Date end <input id="dateEnd" type="date"></label>
+      <button id="clearDates" class="btn">Clear dates</button>
+    </div>
+  </details>
+
+  <div id="count" class="muted"></div>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none">No results.</div>
+</div>
+
+<script src="./static/app.js"></script>

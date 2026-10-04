@@ -1,0 +1,28 @@
+<!doctype html><meta charset='utf-8'><title>Archive</title>
+<link rel="stylesheet" href="../static/styles.css">
+<div class='wrap'>
+  <div class='head'><h1>Archive</h1><a class="link" href='../index.html'>← Home</a></div>
+  <p>Browse by month or use the search below to find stories across all time.</p>
+  <div class='searchbar'><input id='q' type='search' placeholder='Search all archived stories… (title or summary)'></div>
+  <div id='results' class='grid'></div>
+  <h2 style='margin-top:18px'>Browse by month</h2>
+  <div class='grid'><div class='card'><div class='txt'><a class='link' href='./2025-08.html'>2025-08</a></div></div><div class='card'><div class='txt'><a class='link' href='./2025-07.html'>2025-07</a></div></div><div class='card'><div class='txt'><a class='link' href='./2025-06.html'>2025-06</a></div></div></div>
+</div>
+<script>
+(async function(){
+  const box=document.getElementById('q'); const out=document.getElementById('results');
+  let all=[]; try{const r=await fetch('../data/items.json?m='+Date.now(),{cache:'no-store'}); if(r.ok) all=await r.json();}catch(_ ){}
+  function domain(u){ try{return new URL(u).hostname;}catch{return ''} }
+  function fav(u){ const d=domain(u); return d?('https://www.google.com/s2/favicons?domain='+encodeURIComponent(d)+'&sz=64'):'' }
+  function isNew(dateStr){ if(!dateStr) return false; const d=new Date(dateStr.replace(' ','T')+'Z'); const now=new Date(); return (now-d)>=0 && (now-d)<=86400000; }
+  function card(i){
+    const title=i.title||'', link=i.link||'#', date=i.date||'', summary=i.summary||'', image=i.image||'';
+    const newb=isNew(date)?"<span class='badge b-area'>NEW</span>":"";
+    const media=image?"<img class='thumb' loading='lazy' src='"+image+"' alt=''>":(function(){const f=fav(link); const icon=f?("<img class='favicon' src='"+f+"' alt=''>"):"<span class='favicon'></span>"; return "<div class='media'><div class='media__inner'><div class='media__row'>"+icon+"<div class='media__title'>"+title.slice(0,120)+"</div></div><div class='media__summary'>"+(summary||'No summary available.').slice(0,180)+"</div></div></div>";})();
+    return "<div class='card'><div class='inner'><div class='txt'>"+newb+"<h3 style='margin:.4rem 0'><a target='_blank' href='"+link+"'>"+title+"</a></h3><div class='muted'>"+date+"</div><p>"+summary+"</p></div><div>"+media+"</div></div></div>";
+  }
+  function render(list){ out.innerHTML=list.map(card).join(''); }
+  function refresh(){ const term=(box.value||'').toLowerCase(); if(!term){ out.innerHTML=''; return; } const filt=all.filter(i=>((i.title||'').toLowerCase().includes(term)||(i.summary||'').toLowerCase().includes(term))); render(filt); }
+  box?.addEventListener('input',()=>{ clearTimeout(window.__t); window.__t=setTimeout(refresh,160); });
+})();
+</script>
