@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logs • Universal Health Agent</title>
+  <style>
+    :root{--bg:#f8f9fa; --text:#212529; --muted:#6c757d; --card:#ffffff; --border:#dee2e6;}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .container{max-width:1140px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Build Logs</h1>
+    <div class="card"><pre id="logs" style="white-space:pre-wrap"></pre></div>
+    <p>These logs are written by <code>app.py</code> into <code>output/data/logs.txt</code>.</p>
+  </div>
+  <script>fetch('./data/logs.txt').then(r=>r.text()).then(t=>document.getElementById('logs').textContent=t).catch(()=>{});</script>
+</body>
+</html>
